@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.1.0';
+	const VERSION = '1.1.1';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -34,6 +34,15 @@ final class Kashi {
 
 	/** بافر خروجی صفحه (اگر وسط کار flush شود) */
 	private static $hf_buf = '';
+
+	/** HTML آماده هدر/فوتر (خارج از output handler ساخته می‌شود) */
+	private static $hf_markup = array();
+
+	/** اسکریپت‌های هدر/فوتر برای wp_footer */
+	private static $hf_scripts = '';
+
+	/** خروجی HTML نیست (فایل، JSON، CSV ...): بدون دست‌کاری عبور کند */
+	private static $hf_pass = false;
 
 	/** اسکیماهای JSON-LD که چاپ شده‌اند */
 	private static $printed_ld = array();
@@ -88,7 +97,10 @@ final class Kashi {
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
 
 		// هدر و فوتر با کاشی
+		add_action( 'template_redirect', array( __CLASS__, 'live_headers' ), 0 );
 		add_action( 'template_redirect', array( __CLASS__, 'hf_start' ), 1 );
+		add_action( 'wp_head', array( __CLASS__, 'hf_prepare' ), 1 );
+		add_action( 'wp_footer', array( __CLASS__, 'hf_print_scripts' ), 100 );
 		add_action( 'transition_post_status', array( __CLASS__, 'hf_status_changed' ), 10, 3 );
 		add_action( 'deleted_post', array( __CLASS__, 'hf_post_deleted' ) );
 	}
@@ -221,7 +233,10 @@ final class Kashi {
 		return $snap;
 	}
 
-	private static function push_rev( $id, $snap, $time = null, $user = null ) {
+	private static function push_rev( $id, $snap, $time = null, $user = null, $trusted = null ) {
+		if ( null === $trusted ) {
+			$trusted = current_user_can( 'unfiltered_html' ) && ! self::post_untrusted( $id );
+		}
 		$revs = self::get_revs( $id );
 		$hash = md5( wp_json_encode( $snap ) );
 		if ( $revs && isset( $revs[0]['hash'] ) && $revs[0]['hash'] === $hash ) {
@@ -237,11 +252,17 @@ final class Kashi {
 				't'    => $time ? (int) $time : time(),
 				'user' => (string) $user,
 				'hash' => $hash,
-				'n'    => count( $snap['blocks'] ),
-				'data' => $snap,
+				'n'       => count( $snap['blocks'] ),
+				'trusted' => (bool) $trusted,
+				'data'    => $snap,
 			)
 		);
-		update_option( 'lsec_revs_' . (int) $id, array_slice( $revs, 0, self::MAX_REVS ), false );
+		$revs = array_slice( $revs, 0, self::MAX_REVS );
+		// سقف حجم تاریخچه (~۲ مگابایت) تا ذخیره در دیتابیس شکست نخورد
+		while ( count( $revs ) > 1 && strlen( maybe_serialize( $revs ) ) > 2 * MB_IN_BYTES ) {
+			array_pop( $revs );
+		}
+		update_option( 'lsec_revs_' . (int) $id, $revs, false );
 	}
 
 	private static function revs_meta( $id ) {
@@ -350,6 +371,86 @@ final class Kashi {
 		return is_array( $data ) ? self::normalize_blocks( $data ) : array();
 	}
 
+	/* ------------------------------------------------------------------ *
+	 * مدل اعتماد (امنیت)
+	 * کدی که کاربرِ بدون دسترسی unfiltered_html (نویسنده، همکار، ویرایشگر در
+	 * مولتی‌سایت) ذخیره کرده، «نامطمئن» است: هنگام ذخیره پاک‌سازی می‌شود و هر
+	 * بار که وارد یک محیط مطمئن شود (ویرایشگر مدیر، تاریخچه، کتابخانه) دوباره
+	 * پاک‌سازی می‌شود تا هرگز با دسترسی مدیر اجرا نشود.
+	 * ------------------------------------------------------------------ */
+
+	/** آیا محتوای ذخیره‌شده این برگه/کاشی از منبع نامطمئن است؟ */
+	private static function post_untrusted( $id ) {
+		$flag = get_post_meta( $id, '_lsec_untrusted', true );
+		if ( '1' === $flag ) {
+			return true;
+		}
+		if ( '0' === $flag ) {
+			return false;
+		}
+		// داده‌های قدیمی (قبل از این نسخه): آخرین ویرایش‌کننده یا نویسنده
+		$uid = (int) get_post_meta( $id, '_edit_last', true );
+		if ( ! $uid ) {
+			$uid = (int) get_post_field( 'post_author', $id );
+		}
+		return ! $uid || ! user_can( $uid, 'unfiltered_html' );
+	}
+
+	/** پاک‌سازی کد منبع برای کاربر نامطمئن: HTML با kses، CSS امن، بدون اسکریپت و PHP */
+	private static function sanitize_source( $code ) {
+		$code   = preg_replace( '#<\?.*?(?:\?>|\z)#s', '', (string) $code );
+		$styles = array();
+		$code   = preg_replace_callback(
+			'#<style\b[^>]*>(.*?)</style\s*>#is',
+			function ( $m ) use ( &$styles ) {
+				$styles[] = $m[1];
+				return 'KASHISTYLE' . ( count( $styles ) - 1 ) . 'ELYTSIHSAK';
+			},
+			$code
+		);
+		$code = wp_kses_post( $code );
+		return preg_replace_callback(
+			'#KASHISTYLE(\d+)ELYTSIHSAK#',
+			function ( $m ) use ( $styles ) {
+				return isset( $styles[ (int) $m[1] ] ) ? '<style>' . self::css_untrusted( $styles[ (int) $m[1] ] ) . '</style>' : '';
+			},
+			$code
+		);
+	}
+
+	private static function sanitize_blocks( $blocks ) {
+		foreach ( $blocks as $k => $b ) {
+			if ( isset( $b['code'] ) ) {
+				$blocks[ $k ]['code'] = self::sanitize_source( $b['code'] );
+			}
+		}
+		return $blocks;
+	}
+
+	/** CSS کاربر نامطمئن: بدون @import، بدون url() خارجی، بدون expression/behavior */
+	private static function css_untrusted( $css ) {
+		$css  = str_replace( '<', '', (string) $css );
+		$css  = preg_replace( '#/\*.*?\*/#s', '', $css );
+		$css  = preg_replace( '/@import[^;]*;?/i', '', $css );
+		$css  = preg_replace( '/(expression\s*\(|behavior\s*:|-moz-binding\s*:|javascript\s*:)/i', '/*x*/', $css );
+		$host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+		return preg_replace_callback(
+			'/url\(\s*([\'"]?)(.*?)\1\s*\)/i',
+			function ( $m ) use ( $host ) {
+				$u = trim( $m[2] );
+				if ( preg_match( '#^data:image/(png|jpe?g|gif|webp|avif);#i', $u ) ) {
+					return $m[0];
+				}
+				if ( preg_match( '#^(?:[a-z][a-z0-9+.-]*:|//)#i', $u ) ) {
+					$uh = wp_parse_url( ( 0 === strpos( $u, '//' ) ? 'https:' : '' ) . $u, PHP_URL_HOST );
+					return ( $uh && $host && strtolower( $uh ) === strtolower( $host ) && preg_match( '#^(https?:)?//#i', $u ) ) ? $m[0] : 'none';
+				}
+				return $m[0]; // آدرس نسبی
+			},
+			$css
+		);
+	}
+
 	private static function strip_scripts( $code ) {
 		return preg_replace( '#<script\b[^>]*>.*?</script\s*>#is', '', $code );
 	}
@@ -422,6 +523,9 @@ final class Kashi {
 					$sid = (int) $m[1];
 					if ( $depth >= 3 || self::CPT !== get_post_type( $sid ) ) {
 						return '';
+					}
+					if ( 'publish' !== get_post_status( $sid ) && ! current_user_can( 'edit_post', $sid ) ) {
+						return ''; // محتوای پیش‌نویس/خصوصی نباید به post_content عمومی نشت کند
 					}
 					$c = self::saved_compiled( $sid );
 					return $c ? self::seo_html( $c, $depth + 1 ) : '';
@@ -618,7 +722,7 @@ final class Kashi {
 			'postId'    => $id,
 			'saveNonce' => wp_create_nonce( 'kashi_save_' . $id ),
 			'settings'  => $settings,
-			'blocks'    => self::get_blocks( $id ),
+			'blocks'    => ( self::post_untrusted( $id ) || ! current_user_can( 'unfiltered_html' ) ) ? self::sanitize_blocks( self::get_blocks( $id ) ) : self::get_blocks( $id ),
 			'revs'      => self::revs_meta( $id ),
 			'libNonce'  => wp_create_nonce( 'kashi_lib' ),
 			'editBase'  => admin_url( 'admin-post.php?action=kashi_edit&post=' ),
@@ -637,7 +741,6 @@ final class Kashi {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?php echo esc_html( 'ویرایش: ' . get_the_title( $post ) ); ?></title>
 <?php wp_print_styles(); ?>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
 <style>
 :root{
 	--bg:#0d0f14;--panel:#13161d;--panel2:#191d26;--hover:#20252f;--line:#232834;--line2:#2e3442;
@@ -952,7 +1055,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 <?php if ( function_exists( 'wp_print_media_templates' ) ) { wp_print_media_templates(); } ?>
 <script>
 (function () {
-	var cfg = <?php echo wp_json_encode( $config ); ?>;
+	var cfg = <?php echo wp_json_encode( $config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?>;
 	var $ = function (id) { return document.getElementById(id); };
 	/* فقط یک پنل شناور در هر لحظه باز باشد */
 	function closeOthers(keep) {
@@ -1987,16 +2090,15 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		$trusted  = current_user_can( 'unfiltered_html' );
 
 		if ( ! $trusted ) {
-			foreach ( $blocks as $k => $b ) {
-				$blocks[ $k ]['code'] = self::strip_scripts( $b['code'] );
-			}
+			$blocks = self::sanitize_blocks( $blocks ); // منبع هم پاک‌سازی می‌شود، نه فقط خروجی
 		}
 
 		// اولین ذخیره بعد از نصب این نسخه: وضعیت قبلی هم در تاریخچه بماند
 		if ( ! self::get_revs( $id ) && self::get_blocks( $id ) ) {
-			self::push_rev( $id, self::snapshot( $id ), get_post_modified_time( 'U', true, $post ), 'نسخه قبلی' );
+			self::push_rev( $id, self::snapshot( $id ), get_post_modified_time( 'U', true, $post ), 'نسخه قبلی', ! self::post_untrusted( $id ) );
 		}
 
+		update_post_meta( $id, '_lsec_untrusted', $trusted ? '0' : '1' );
 		update_post_meta( $id, '_lsec_blocks', wp_slash( $blocks ) );
 		update_post_meta( $id, '_lsec_scope', $scope_on ? '1' : '0' );
 		$compiled = self::compile_blocks( $blocks, $scope_on, $trusted );
@@ -2037,7 +2139,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		if ( '' !== $title && $title !== $post->post_title ) {
 			$update['post_title'] = $title;
 		}
-		if ( self::CPT === $post->post_type && 'publish' !== $post->post_status ) {
+		if ( self::CPT === $post->post_type && 'publish' !== $post->post_status && current_user_can( 'publish_pages' ) ) {
 			$update['post_status'] = 'publish';
 		} elseif ( 'auto-draft' === $post->post_status ) {
 			$update['post_status'] = 'draft';
@@ -2053,7 +2155,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 			wp_update_post( wp_slash( $update ) );
 		}
 
-		self::push_rev( $id, self::snapshot( $id ) );
+		self::push_rev( $id, self::snapshot( $id ), null, null, $trusted );
 		if ( self::CPT === $post->post_type ) {
 			self::hf_rebuild_index();
 		}
@@ -2072,7 +2174,12 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		if ( ! isset( $revs[ $i ]['data'] ) ) {
 			wp_send_json_error( 'این نسخه پیدا نشد.' );
 		}
-		wp_send_json_success( $revs[ $i ]['data'] );
+		$data = $revs[ $i ]['data'];
+		$safe = isset( $revs[ $i ]['trusted'] ) ? (bool) $revs[ $i ]['trusted'] : ! self::post_untrusted( $id );
+		if ( ! $safe || ! current_user_can( 'unfiltered_html' ) ) {
+			$data['blocks'] = self::sanitize_blocks( isset( $data['blocks'] ) ? (array) $data['blocks'] : array() );
+		}
+		wp_send_json_success( $data );
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -2118,8 +2225,12 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		if ( ! $id || self::CPT !== get_post_type( $id ) || ! current_user_can( 'edit_post', $id ) ) {
 			wp_send_json_error( 'این مورد در کتابخانه پیدا نشد.' );
 		}
+		$src = self::get_blocks( $id );
+		if ( self::post_untrusted( $id ) || ! current_user_can( 'unfiltered_html' ) ) {
+			$src = self::sanitize_blocks( $src );
+		}
 		$blocks = array();
-		foreach ( self::get_blocks( $id ) as $b ) {
+		foreach ( $src as $b ) {
 			unset( $b['uid'] ); // نسخه کپی شناسه جدید می‌گیرد
 			$blocks[] = $b;
 		}
@@ -2139,9 +2250,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		}
 		$trusted = current_user_can( 'unfiltered_html' );
 		if ( ! $trusted ) {
-			foreach ( $blocks as $k => $b ) {
-				$blocks[ $k ]['code'] = self::strip_scripts( $b['code'] );
-			}
+			$blocks = self::sanitize_blocks( $blocks );
 		}
 		$scope_on = ! empty( $_POST['scope'] );
 
@@ -2149,7 +2258,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 			wp_slash(
 				array(
 					'post_type'   => self::CPT,
-					'post_status' => 'publish',
+					'post_status' => current_user_can( 'publish_pages' ) ? 'publish' : 'draft',
 					'post_title'  => $name,
 				)
 			),
@@ -2159,10 +2268,11 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 			wp_send_json_error( $sid->get_error_message() );
 		}
 
+		update_post_meta( $sid, '_lsec_untrusted', $trusted ? '0' : '1' );
 		update_post_meta( $sid, '_lsec_blocks', wp_slash( $blocks ) );
 		update_post_meta( $sid, '_lsec_scope', $scope_on ? '1' : '0' );
 		update_post_meta( $sid, '_lsec_compiled', wp_slash( self::compile_blocks( $blocks, $scope_on, $trusted ) ) );
-		self::push_rev( $sid, self::snapshot( $sid ) );
+		self::push_rev( $sid, self::snapshot( $sid ), null, null, $trusted );
 
 		wp_send_json_success( array( 'id' => $sid ) );
 	}
@@ -2227,6 +2337,10 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 			);
 		}
 
+		if ( ! $trusted ) {
+			$css      = self::css_untrusted( $css );
+			$scope_on = true; // CSS نامطمئن همیشه محدود به همان کاشی
+		}
 		$css = $scope_on ? self::scope_css( $css, $scope ) : str_replace( '{{root}}', $scope, $css );
 		$css = str_replace( '<', '\3C ', $css );
 
@@ -2826,8 +2940,11 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		if ( ! $active ) {
 			return;
 		}
-		self::$hf_active = $active;
-		self::$hf_buf    = '';
+		self::$hf_active  = $active;
+		self::$hf_buf     = '';
+		self::$hf_markup  = array();
+		self::$hf_scripts = '';
+		self::$hf_pass    = false;
 		ob_start( array( __CLASS__, 'hf_buffer' ) );
 	}
 
@@ -2842,12 +2959,26 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		return self::saved_compiled( $sid );
 	}
 
+	/**
+	 * نسخه «ماسک‌شده» HTML: محتوای کامنت‌ها، اسکریپت‌ها، استایل‌ها و template ها با
+	 * فاصله جایگزین می‌شود (با همان طول) تا جستجوی تگ‌ها گول متن داخل آن‌ها را نخورد.
+	 */
+	private static function hf_mask( $html ) {
+		return preg_replace_callback(
+			'#<!--.*?-->|<(script|style|template|textarea|noscript)\b[^>]*>.*?</\1\s*>#is',
+			function ( $m ) {
+				return str_repeat( ' ', strlen( $m[0] ) );
+			},
+			$html
+		);
+	}
+
 	/** محدوده [شروع، پایان] یک المان در HTML با شمارش تگ‌های تودرتو */
-	private static function hf_range( $html, $tag, $start ) {
-		$re    = '#<(/?)' . preg_quote( $tag, '#' ) . '\b[^>]*>#i';
+	private static function hf_range( $masked, $tag, $start ) {
+		$re    = '#<(/?)' . preg_quote( $tag, '#' ) . '(?=[\s/>])[^>]*>#i';
 		$depth = 0;
 		$pos   = $start;
-		while ( preg_match( $re, $html, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
+		while ( preg_match( $re, $masked, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
 			$depth += ( '/' === $m[1][0] ) ? -1 : 1;
 			$pos    = $m[0][1] + strlen( $m[0][0] );
 			if ( 0 === $depth ) {
@@ -2862,26 +2993,27 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 	 * $target: «#id» ، «.class» ، نام تگ یا خالی (= header / footer)
 	 */
 	private static function hf_find( $html, $loc, $target ) {
-		$body = stripos( $html, '<body' );
+		$masked = self::hf_mask( $html );
+		$body   = stripos( $masked, '<body' );
 		if ( false === $body ) {
 			return null;
 		}
 		if ( '' !== $target && ( '#' === $target[0] || '.' === $target[0] ) ) {
 			$name = preg_quote( substr( $target, 1 ), '#' );
 			$re   = '#' === $target[0]
-				? '#<([a-zA-Z][\w-]*)\b[^>]*\sid\s*=\s*(["\']?)' . $name . '\2[\s>/]#i'
-				: '#<([a-zA-Z][\w-]*)\b[^>]*\sclass\s*=\s*(["\'])(?:[^"\']*\s)?' . $name . '(?:\s[^"\']*)?\2#i';
-			if ( ! preg_match( $re, $html, $m, PREG_OFFSET_CAPTURE, $body ) ) {
+				? '#<([a-zA-Z][\w-]*)(?=[\s/>])[^>]*\sid\s*=\s*(["\']?)' . $name . '\2[\s>/]#i'
+				: '#<([a-zA-Z][\w-]*)(?=[\s/>])[^>]*\sclass\s*=\s*(["\'])(?:[^"\']*\s)?' . $name . '(?:\s[^"\']*)?\2#i';
+			if ( ! preg_match( $re, $masked, $m, PREG_OFFSET_CAPTURE, $body ) ) {
 				return null;
 			}
-			return self::hf_range( $html, $m[1][0], $m[0][1] );
+			return self::hf_range( $masked, $m[1][0], $m[0][1] );
 		}
 
 		$tag = '' !== $target ? $target : $loc;
 		$top = array();
 		$pos = $body;
-		while ( preg_match( '#<' . preg_quote( $tag, '#' ) . '\b#i', $html, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
-			$r = self::hf_range( $html, $tag, $m[0][1] );
+		while ( preg_match( '#<' . preg_quote( $tag, '#' ) . '(?=[\s/>])#i', $masked, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
+			$r = self::hf_range( $masked, $tag, $m[0][1] );
 			if ( ! $r ) {
 				break;
 			}
@@ -2897,22 +3029,31 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		return 'header' === $loc ? $top[0] : end( $top );
 	}
 
-	/** خروجی نهایی صفحه: جایگزینی هدر/فوتر + CSS در head + اسکریپت‌ها قبل از </body> */
-	public static function hf_buffer( $chunk, $phase = PHP_OUTPUT_HANDLER_FINAL ) {
-		self::$hf_buf .= $chunk;
-		if ( ! ( $phase & PHP_OUTPUT_HANDLER_FINAL ) && ! ( $phase & PHP_OUTPUT_HANDLER_END ) ) {
-			return '';
+	/** پیش‌نمایش زنده هرگز کش و ایندکس نشود */
+	public static function live_headers() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce در live_valid بررسی می‌شود
+		if ( empty( $_POST['kashi_live_nonce'] ) ) {
+			return;
 		}
-		$html          = self::$hf_buf;
-		self::$hf_buf  = '';
-		if ( false === stripos( $html, '<body' ) || false === stripos( $html, '</head>' ) ) {
-			return $html;
+		$id = ! empty( $_GET['kashi_preview'] ) ? absint( $_GET['kashi_preview'] ) : get_queried_object_id(); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( $id && self::live_valid( $id ) ) {
+			nocache_headers();
+			if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+				define( 'DONOTCACHEPAGE', true ); // LiteSpeed / WP Rocket / W3TC
+			}
+			header( 'X-Robots-Tag: noindex, nofollow' );
 		}
+	}
 
-		$head    = '';
-		$scripts = '';
-		// اول فوتر (آخرین المان)، بعد هدر (اولین المان)
-		foreach ( array( 'footer', 'header' ) as $loc ) {
+	/**
+	 * ساخت هدر/فوتر در wp_head (خارج از output handler): شورت‌کدهایی که خودشان
+	 * ob_start می‌کنند (منو، سبد خرید، فرم ...) بدون مشکل کار می‌کنند و CSS در head چاپ می‌شود.
+	 */
+	public static function hf_prepare() {
+		if ( ! self::$hf_active || self::$hf_markup ) {
+			return;
+		}
+		foreach ( array( 'header', 'footer' ) as $loc ) {
 			if ( empty( self::$hf_active[ $loc ] ) ) {
 				continue;
 			}
@@ -2921,31 +3062,82 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 			if ( ! $c ) {
 				continue;
 			}
-			$head .= self::collect_head( $c, 0 );
+			echo self::collect_head( $c, 0 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CSS/JSON ذخیره‌شده
 
 			$saved_js        = self::$footer_js;
 			self::$footer_js = array();
-			$markup          = '<div id="kashi-' . $loc . '" class="kashi-hf kashi-hf-' . $loc . '">' . self::render( $sid, $c, null ) . '</div>';
-			$scripts        .= implode( "\n", self::$footer_js ) . "\n";
-			self::$footer_js = $saved_js;
+			ob_start(); // شورت‌کدهایی که اشتباهاً echo می‌کنند هم سر جای خودشان بیایند
+			$inner                     = self::render( $sid, $c, null );
+			$inner                     = ob_get_clean() . $inner;
+			self::$hf_markup[ $loc ]   = '<div id="kashi-' . $loc . '" class="kashi-hf kashi-hf-' . $loc . '">' . $inner . '</div>';
+			self::$hf_scripts         .= implode( "\n", self::$footer_js ) . "\n";
+			self::$footer_js           = $saved_js;
+		}
+	}
 
-			$target = (string) get_post_meta( $sid, '_lsec_target', true );
+	public static function hf_print_scripts() {
+		if ( '' !== trim( self::$hf_scripts ) ) {
+			echo self::$hf_scripts; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- اسکریپت ذخیره‌شده توسط مدیر
+			self::$hf_scripts = '';
+		}
+	}
+
+	/** آیا پاسخ HTML است؟ (اگر هدر Content-Type غیر HTML فرستاده شده، دست نزن) */
+	private static function hf_is_html_response() {
+		foreach ( headers_list() as $h ) {
+			if ( 0 === stripos( $h, 'content-type:' ) ) {
+				return false !== stripos( $h, 'text/html' );
+			}
+		}
+		return true;
+	}
+
+	/** output handler: فقط جایگزینی رشته‌ها؛ هیچ رندر یا شورت‌کدی اینجا اجرا نمی‌شود */
+	public static function hf_buffer( $chunk, $phase = PHP_OUTPUT_HANDLER_FINAL ) {
+		if ( $phase & PHP_OUTPUT_HANDLER_CLEAN ) {
+			self::$hf_buf = ''; // ob_clean(): خروجی دورریخته‌شده برنگردد
+			return '';
+		}
+		if ( self::$hf_pass ) {
+			return $chunk;
+		}
+		self::$hf_buf .= $chunk;
+		$final         = ( $phase & PHP_OUTPUT_HANDLER_FINAL ) || ( $phase & PHP_OUTPUT_HANDLER_END );
+
+		// خروجی غیر HTML (دانلود فایل، JSON، CSV): بلافاصله و دست‌نخورده عبور کند
+		$head = ltrim( substr( self::$hf_buf, 0, 512 ) );
+		if ( ! self::hf_is_html_response() || ( strlen( $head ) > 0 && '<' !== $head[0] ) ) {
+			self::$hf_pass = true;
+			$out           = self::$hf_buf;
+			self::$hf_buf  = '';
+			return $out;
+		}
+		if ( ! $final ) {
+			return '';
+		}
+
+		$html         = self::$hf_buf;
+		self::$hf_buf = '';
+		if ( ! self::$hf_markup || false === stripos( $html, '<body' ) ) {
+			return $html;
+		}
+
+		// اول فوتر (آخرین المان)، بعد هدر (اولین المان)
+		foreach ( array( 'footer', 'header' ) as $loc ) {
+			if ( empty( self::$hf_markup[ $loc ] ) ) {
+				continue;
+			}
+			$markup = self::$hf_markup[ $loc ];
+			$target = (string) get_post_meta( (int) self::$hf_active[ $loc ], '_lsec_target', true );
 			$range  = self::hf_find( $html, $loc, $target );
 			if ( $range ) {
 				$html = substr( $html, 0, $range[0] ) . $markup . substr( $html, $range[1] );
-			} elseif ( 'header' === $loc && preg_match( '#<body\b[^>]*>#i', $html, $m, PREG_OFFSET_CAPTURE ) ) {
+			} elseif ( 'header' === $loc && preg_match( '#<body(?=[\s>])[^>]*>#i', $html, $m, PREG_OFFSET_CAPTURE ) ) {
 				$at   = $m[0][1] + strlen( $m[0][0] );
 				$html = substr( $html, 0, $at ) . $markup . substr( $html, $at );
 			} elseif ( 'footer' === $loc && false !== ( $at = strripos( $html, '</body>' ) ) ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.Found
 				$html = substr( $html, 0, $at ) . $markup . substr( $html, $at );
 			}
-		}
-
-		if ( '' !== $head && false !== ( $at = stripos( $html, '</head>' ) ) ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.Found
-			$html = substr( $html, 0, $at ) . "<!-- Kashi header/footer -->\n" . $head . substr( $html, $at );
-		}
-		if ( '' !== trim( $scripts ) && false !== ( $at = strripos( $html, '</body>' ) ) ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.Found
-			$html = substr( $html, 0, $at ) . $scripts . substr( $html, $at );
 		}
 		return $html;
 	}

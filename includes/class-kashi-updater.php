@@ -117,15 +117,15 @@ final class Kashi_Updater {
 			}
 		}
 
-		$url = $s['url'];
+		$headers = array( 'Accept' => 'application/json' );
 		if ( '' !== $s['key'] ) {
-			$url = add_query_arg( 'key', rawurlencode( $s['key'] ), $url );
+			$headers['X-Kashi-Key'] = $s['key']; // در هدر، نه در آدرس (تا در لاگ سرورها ثبت نشود)
 		}
-		$res = wp_remote_get(
-			$url,
+		$res = wp_safe_remote_get(
+			$s['url'],
 			array(
 				'timeout' => 12,
-				'headers' => array( 'Accept' => 'application/json' ),
+				'headers' => $headers,
 			)
 		);
 
@@ -145,6 +145,10 @@ final class Kashi_Updater {
 		}
 		if ( ! self::is_safe_url( $data['package'] ) ) {
 			self::fail( 'آدرس فایل نسخه جدید باید https باشد.' );
+			return null;
+		}
+		if ( empty( $data['sha256'] ) || ! preg_match( '/^[a-f0-9]{64}$/i', (string) $data['sha256'] ) ) {
+			self::fail( 'فایل آپدیت امضای SHA-256 ندارد؛ برای امنیت نصب نمی‌شود.' );
 			return null;
 		}
 
@@ -233,9 +237,24 @@ final class Kashi_Updater {
 		if ( false !== $reply ) {
 			return $reply;
 		}
-		$m = get_site_transient( self::CACHE );
-		if ( ! is_array( $m ) || empty( $m['package'] ) || $package !== $m['package'] || empty( $m['sha256'] ) ) {
+		$m       = get_site_transient( self::CACHE );
+		$upd     = get_site_transient( 'update_plugins' );
+		$offered = ( is_object( $upd ) && isset( $upd->response[ self::$basename ]->package ) ) ? (string) $upd->response[ self::$basename ]->package : '';
+		$is_ours = ( isset( $hook_extra['plugin'] ) && self::$basename === $hook_extra['plugin'] )
+			|| ( is_array( $m ) && ! empty( $m['package'] ) && $package === $m['package'] )
+			|| ( '' !== $offered && $package === $offered ); // حتی وقتی کش manifest منقضی شده
+		if ( ! $is_ours ) {
 			return $reply;
+		}
+		// بستن در حالت شک: بدون امضای معتبرِ همین فایل، نصب نمی‌شود
+		if ( ! is_array( $m ) || empty( $m['sha256'] ) || $package !== ( isset( $m['package'] ) ? $m['package'] : '' ) ) {
+			$m = self::manifest( true );
+		}
+		if ( ! $m || empty( $m['sha256'] ) ) {
+			return new WP_Error( 'kashi_no_checksum', 'امضای نسخه جدید دریافت نشد؛ برای امنیت نصب متوقف شد. «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
+		}
+		if ( $package !== $m['package'] ) {
+			return new WP_Error( 'kashi_package_mismatch', 'فایل این آپدیت با نسخه اعلام‌شده سرور یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
 		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -294,7 +313,11 @@ final class Kashi_Updater {
 		if ( empty( $s['server'] ) || ! is_array( $r ) || empty( $r['version'] ) ) {
 			return new WP_Error( 'kashi_no_release', 'سرور آپدیت فعال نیست.', array( 'status' => 404 ) );
 		}
-		if ( '' !== $s['server_key'] && ! hash_equals( $s['server_key'], (string) $request->get_param( 'key' ) ) ) {
+		$given = (string) $request->get_header( 'x_kashi_key' );
+		if ( '' === $given ) {
+			$given = (string) $request->get_param( 'key' ); // سازگاری با نسخه ۱.۱.۰
+		}
+		if ( '' !== $s['server_key'] && ! hash_equals( $s['server_key'], $given ) ) {
 			return new WP_Error( 'kashi_forbidden', 'کلید دسترسی نامعتبر است.', array( 'status' => 403 ) );
 		}
 		$res = rest_ensure_response(
