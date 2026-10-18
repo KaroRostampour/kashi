@@ -30,6 +30,7 @@ final class Kashi_Updater {
 	/** @var string plugin_basename فایل اصلی، مثل kashi/kashi.php */
 	private static $basename = '';
 	private static $version  = '';
+	private static $inline   = false;
 
 	public static function init( $plugin_file, $version ) {
 		self::$basename = plugin_basename( $plugin_file );
@@ -653,7 +654,7 @@ final class Kashi_Updater {
 			$s = self::settings();
 			echo '<div class="notice notice-info is-dismissible"><p><b>کاشی:</b> ' . esc_html( $s['last_status'] ? $s['last_status'] : 'بررسی انجام شد.' ) . '</p></div>';
 		}
-		if ( isset( $_GET['kashi_saved'] ) ) {
+		if ( isset( $_GET['kashi_saved'] ) && ! self::$inline ) {
 			$code = sanitize_key( wp_unslash( $_GET['kashi_saved'] ) );
 			$all  = array(
 				'1'           => array( 'success', 'تنظیمات ذخیره شد.' ),
@@ -697,6 +698,10 @@ final class Kashi_Updater {
 		self::flush_cache();
 		if ( class_exists( 'Kashi_Net' ) ) {
 			Kashi_Net::save_from_post();
+		}
+		if ( '' !== $new['url'] ) {
+			self::manifest( true ); // بلافاصله بررسی شود تا «وضعیت» نتیجه واقعی را نشان دهد
+			delete_site_transient( 'update_plugins' );
 		}
 
 		$flag = '1';
@@ -798,6 +803,14 @@ final class Kashi_Updater {
 				.kashi-settings .kashi-actions{display:flex;gap:8px;margin-top:6px}
 			</style>
 			<h1>تنظیمات کاشی <span class="kashi-pill">نسخه <?php echo esc_html( self::$version ); ?></span></h1>
+			<?php
+			if ( isset( $_GET['kashi_saved'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				self::$inline = false;
+				self::notices();
+			}
+			self::$inline = true; // پیام در admin_notices تکرار نشود
+			$self_server  = ! empty( $s['server'] ) && '' !== $s['url'] && false !== strpos( $s['url'], '//' . (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+			?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="kashi_save_settings">
 				<?php wp_nonce_field( 'kashi_save_settings' ); ?>
@@ -833,10 +846,16 @@ final class Kashi_Updater {
 							<?php if ( $new ) : ?>
 								<span class="kashi-pill new">نسخه <?php echo esc_html( $m['version'] ); ?> آماده نصب است</span>
 								<a class="button button-primary" href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>">رفتن به افزونه‌ها</a>
+							<?php elseif ( $self_server ) : ?>
+								<span class="kashi-pill ok">این سایت خودش سرور آپدیت است</span>
+								<p class="description">روی سایت سرور، آدرس سرور لازم نیست و آپدیتی هم نمایش داده نمی‌شود (همین نسخه را منتشر می‌کند). این آدرس را در سایت‌های <b>دیگر</b> وارد کنید. برای به‌روز کردن خود این سایت، zip نسخه جدید را از «افزونه‌ها ← افزودن ← بارگذاری» نصب کنید.</p>
 							<?php elseif ( $s['last_status'] ) : ?>
 								<span class="kashi-pill <?php echo is_array( $m ) && ! empty( $m['version'] ) ? 'ok' : ''; ?>"><?php echo esc_html( $s['last_status'] ); ?></span>
 							<?php else : ?>
 								<span class="kashi-pill">هنوز بررسی نشده</span>
+							<?php endif; ?>
+							<?php if ( is_array( $m ) && ! empty( $m['version'] ) ) : ?>
+								<p class="description">نسخه نصب‌شده: <b><?php echo esc_html( self::$version ); ?></b> — نسخه روی سرور: <b><?php echo esc_html( $m['version'] ); ?></b></p>
 							<?php endif; ?>
 							<?php if ( $s['last_check'] ) : ?>
 								<p class="description">آخرین بررسی: <?php echo esc_html( human_time_diff( (int) $s['last_check'], time() ) ); ?> پیش</p>
