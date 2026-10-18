@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.1.1
+ * Version:           1.1.2
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.1.1';
+	const VERSION = '1.1.2';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -577,6 +577,98 @@ final class Kashi {
 			'edit_pages',
 			admin_url( 'admin-post.php?action=kashi_new&_wpnonce=' . wp_create_nonce( 'kashi_new' ) ),
 		);
+		add_submenu_page(
+			'edit.php?post_type=' . self::CPT,
+			'هدر و فوتر',
+			'هدر و فوتر',
+			'edit_pages',
+			'kashi-hf',
+			array( __CLASS__, 'hf_admin_page' )
+		);
+	}
+
+	/** آدرس ساخت کاشی جدید (اختیاری: مستقیم به‌عنوان هدر یا فوتر) */
+	private static function new_url( $loc = '' ) {
+		$url = admin_url( 'admin-post.php?action=kashi_new' . ( $loc ? '&loc=' . $loc : '' ) );
+		return wp_nonce_url( $url, 'kashi_new' );
+	}
+
+	/** صفحه «هدر و فوتر»: همه هدر/فوترها و ساخت سریع */
+	public static function hf_admin_page() {
+		$tiles = get_posts(
+			array(
+				'post_type'      => self::CPT,
+				'post_status'    => array( 'publish', 'draft', 'private' ),
+				'posts_per_page' => 100,
+				'meta_key'       => '_lsec_location', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'     => array( 'header', 'footer' ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'meta_compare'   => 'IN',
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+			)
+		);
+		$modes = array(
+			'all'     => 'کل سایت',
+			'front'   => 'فقط صفحه اصلی',
+			'include' => 'فقط صفحه‌های: ',
+			'exclude' => 'همه‌جا به‌جز: ',
+		);
+		?>
+		<div class="wrap kashi-hfadmin">
+			<style>
+				.kashi-hfadmin .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;max-width:900px;margin:18px 0 26px}
+				.kashi-hfadmin .card2{background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:20px;display:flex;gap:14px;align-items:flex-start}
+				.kashi-hfadmin .card2 .ico{flex:0 0 44px;height:44px;border-radius:10px;background:#efeaff;display:flex;align-items:center;justify-content:center}
+				.kashi-hfadmin .card2 h2{margin:0 0 4px;font-size:15px}
+				.kashi-hfadmin .card2 p{margin:0 0 12px;color:#646970}
+				.kashi-hfadmin table{max-width:900px}
+				.kashi-hfadmin .pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;background:#f0f0f1}
+				.kashi-hfadmin .pill.h{background:#efeaff;color:#4b36c8}.kashi-hfadmin .pill.f{background:#e7f6ee;color:#0a6b3c}
+				.kashi-hfadmin .pill.d{background:#fcf0e3;color:#8a4b00}
+			</style>
+			<h1>هدر و فوتر</h1>
+			<p>هدر و فوتر سایت را با کاشی بسازید؛ جای هدر و فوتر قالب را می‌گیرد و با هر قالبی کار می‌کند. می‌توانید برای صفحه‌های مختلف هدر/فوتر جدا داشته باشید.</p>
+			<div class="cards">
+				<div class="card2">
+					<div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b5af2" stroke-width="1.8"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg></div>
+					<div><h2>هدر جدید</h2><p>بالای همه صفحه‌ها، به‌جای هدر قالب.</p>
+					<a class="button button-primary" href="<?php echo esc_url( self::new_url( 'header' ) ); ?>">ساخت هدر</a></div>
+				</div>
+				<div class="card2">
+					<div class="ico" style="background:#e7f6ee"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a6b3c" stroke-width="1.8"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></svg></div>
+					<div><h2>فوتر جدید</h2><p>پایین همه صفحه‌ها، به‌جای فوتر قالب.</p>
+					<a class="button button-primary" href="<?php echo esc_url( self::new_url( 'footer' ) ); ?>">ساخت فوتر</a></div>
+				</div>
+			</div>
+			<h2>هدر و فوترهای شما</h2>
+			<?php if ( ! $tiles ) : ?>
+				<p>هنوز هدر یا فوتری نساخته‌اید. با دکمه‌های بالا شروع کنید.</p>
+			<?php else : ?>
+			<table class="widefat striped">
+				<thead><tr><th>نام</th><th>محل</th><th>کجا نمایش داده می‌شود</th><th>وضعیت</th><th></th></tr></thead>
+				<tbody>
+				<?php
+				foreach ( $tiles as $t ) :
+					$m    = self::hf_meta( $t->ID );
+					$cond = isset( $modes[ $m['mode'] ] ) ? $modes[ $m['mode'] ] : $modes['all'];
+					if ( in_array( $m['mode'], array( 'include', 'exclude' ), true ) ) {
+						$cond .= implode( '، ', array_map( 'intval', $m['ids'] ) );
+					}
+					?>
+					<tr>
+						<td><strong><?php echo esc_html( $t->post_title ? $t->post_title : '(بدون نام)' ); ?></strong></td>
+						<td><?php echo 'header' === $m['location'] ? '<span class="pill h">هدر</span>' : '<span class="pill f">فوتر</span>'; ?></td>
+						<td><?php echo esc_html( $cond ); ?></td>
+						<td><?php echo 'publish' === $t->post_status ? '<span class="pill">فعال</span>' : '<span class="pill d">پیش‌نویس — هنوز نمایش داده نمی‌شود</span>'; ?></td>
+						<td><a class="button" href="<?php echo esc_url( self::editor_url( $t->ID ) ); ?>">ویرایش با کاشی</a></td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+			<?php endif; ?>
+			<p class="description" style="margin-top:16px">نکته: اگر هدر/فوتر قالب‌تان با المنتور یا صفحه‌ساز دیگری ساخته شده، آن را در تنظیمات قالب خاموش کنید تا فایل‌هایش بیهوده لود نشوند. اگر قالب تگ &lt;header&gt; ندارد، در ویرایشگر کاشی ← «محل نمایش» ← «المان قالب» شناسه آن را بنویسید (مثلاً #masthead).</p>
+		</div>
+		<?php
 	}
 
 	public static function new_section() {
@@ -584,15 +676,21 @@ final class Kashi {
 		if ( ! current_user_can( 'edit_pages' ) ) {
 			wp_die( 'دسترسی ندارید.' );
 		}
-		$id = wp_insert_post(
+		$loc = isset( $_GET['loc'] ) ? sanitize_key( wp_unslash( $_GET['loc'] ) ) : '';
+		$loc = in_array( $loc, array( 'header', 'footer' ), true ) ? $loc : '';
+		$id  = wp_insert_post(
 			array(
 				'post_type'   => self::CPT,
 				'post_status' => 'draft',
-				'post_title'  => 'کاشی جدید',
+				'post_title'  => 'header' === $loc ? 'هدر سایت' : ( 'footer' === $loc ? 'فوتر سایت' : 'کاشی جدید' ),
 			)
 		);
 		if ( is_wp_error( $id ) ) {
 			wp_die( esc_html( $id->get_error_message() ) );
+		}
+		if ( $loc ) {
+			update_post_meta( $id, '_lsec_location', $loc );
+			update_post_meta( $id, '_lsec_cond', array( 'mode' => 'all', 'ids' => array() ) );
 		}
 		wp_safe_redirect( self::editor_url( $id ) );
 		exit;
