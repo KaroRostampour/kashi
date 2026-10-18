@@ -43,6 +43,7 @@ final class Kashi_Updater {
 		// (و در حالت اینترنت ملی) این اتصال قطع است و آپدیت هیچ‌وقت دیده نمی‌شد. پس خودمان
 		// نسخه جدید را مستقیم در فهرست آپدیت‌های وردپرس می‌گذاریم.
 		add_filter( 'site_transient_update_plugins', array( __CLASS__, 'inject_update' ), 20 );
+		add_filter( 'upgrader_source_selection', array( __CLASS__, 'fix_source_dir' ), 10, 4 );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 		add_filter( 'upgrader_pre_download', array( __CLASS__, 'verified_download' ), 10, 4 );
 		add_filter( 'plugin_row_meta', array( __CLASS__, 'row_meta' ), 10, 2 );
@@ -318,8 +319,12 @@ final class Kashi_Updater {
 			return null;
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
+		if ( 404 === $code && '' !== trim( (string) $s['gh_token'] ) ) {
+			// هنوز Release ای ساخته نشده: آخرین کد شاخه اصلی مخزن
+			return self::manifest_github_branch( $s );
+		}
 		if ( 404 === $code ) {
-			self::fail( '' === trim( (string) $s['gh_token'] ) ? 'مخزن پیدا نشد یا خصوصی است؛ «توکن گیت‌هاب» را وارد کنید.' : 'هنوز هیچ نسخه‌ای (Release) در گیت‌هاب منتشر نشده، یا توکن به این مخزن دسترسی ندارد.' );
+			self::fail( 'مخزن پیدا نشد یا خصوصی است؛ «توکن گیت‌هاب» را وارد کنید.' );
 			return null;
 		}
 		if ( 401 === $code || 403 === $code ) {
@@ -370,6 +375,76 @@ final class Kashi_Updater {
 				: 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' . $m['version'] . ').'
 		);
 		return $m;
+	}
+
+	/**
+	 * بدون Release: نسخه از هدر kashi.php آخرین کامیت شاخه اصلی خوانده می‌شود و
+	 * بسته zip همان کامیت دانلود می‌شود (هر بار که شماره نسخه بالا برود، آپدیت دیده می‌شود).
+	 */
+	private static function manifest_github_branch( $s ) {
+		$base = 'https://api.github.com/repos/' . $s['gh_repo'];
+		$args = array(
+			'timeout' => (int) apply_filters( 'kashi_update_timeout', 8 ),
+			'headers' => self::gh_headers( $s ),
+		);
+		$repo = wp_safe_remote_get( $base, $args );
+		if ( is_wp_error( $repo ) || 200 !== (int) wp_remote_retrieve_response_code( $repo ) ) {
+			self::fail( is_wp_error( $repo ) ? 'اتصال به گیت‌هاب ممکن نشد: ' . $repo->get_error_message() : 'توکن به مخزن ' . $s['gh_repo'] . ' دسترسی ندارد.' );
+			return null;
+		}
+		$info   = json_decode( wp_remote_retrieve_body( $repo ), true );
+		$branch = is_array( $info ) && ! empty( $info['default_branch'] ) ? (string) $info['default_branch'] : 'main';
+		$com    = wp_safe_remote_get( $base . '/commits/' . rawurlencode( $branch ), $args );
+		$cd     = is_wp_error( $com ) ? null : json_decode( wp_remote_retrieve_body( $com ), true );
+		if ( ! is_array( $cd ) || empty( $cd['sha'] ) || ! preg_match( '/^[a-f0-9]{40}$/', $cd['sha'] ) ) {
+			self::fail( 'آخرین کامیت مخزن خوانده نشد.' );
+			return null;
+		}
+		$sha  = $cd['sha'];
+		$args['headers']['Accept'] = 'application/vnd.github.raw';
+		$file = wp_safe_remote_get( $base . '/contents/kashi.php?ref=' . $sha, $args );
+		$head = is_wp_error( $file ) ? '' : substr( (string) wp_remote_retrieve_body( $file ), 0, 8192 );
+		if ( ! preg_match( '/^[ \t\/*#@]*Version:\s*([0-9][0-9A-Za-z.\-]*)/mi', $head, $mm ) ) {
+			self::fail( 'شماره نسخه از kashi.php مخزن خوانده نشد.' );
+			return null;
+		}
+		$m = array(
+			'source'       => 'github',
+			'branch'       => true,
+			'version'      => $mm[1],
+			'package'      => $base . '/zipball/' . $sha,
+			'sha256'       => '',
+			'requires'     => '',
+			'requires_php' => '',
+			'tested'       => '',
+			'changelog'    => isset( $cd['commit']['message'] ) ? esc_html( (string) $cd['commit']['message'] ) : '',
+			'last_updated' => isset( $cd['commit']['committer']['date'] ) ? sanitize_text_field( (string) $cd['commit']['committer']['date'] ) : '',
+			'homepage'     => 'https://github.com/' . $s['gh_repo'],
+			'signature'    => '',
+		);
+		set_site_transient( self::CACHE, $m, self::CACHE_TTL );
+		self::set_status(
+			version_compare( $m['version'], self::$version, '>' )
+				? 'نسخه جدید ' . $m['version'] . ' در گیت‌هاب موجود است.'
+				: 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' . $m['version'] . ').'
+		);
+		return $m;
+	}
+
+	/** zip کامیت گیت‌هاب پوشه‌ای مثل Owner-kashi-abc123 دارد؛ هنگام نصب به kashi تغییر نام می‌دهیم */
+	public static function fix_source_dir( $source, $remote_source, $upgrader = null, $hook_extra = array() ) {
+		if ( ! isset( $hook_extra['plugin'] ) || self::$basename !== $hook_extra['plugin'] ) {
+			return $source;
+		}
+		$want = trailingslashit( $remote_source ) . dirname( self::$basename );
+		if ( untrailingslashit( $source ) === $want || ! file_exists( trailingslashit( $source ) . 'kashi.php' ) ) {
+			return $source;
+		}
+		global $wp_filesystem;
+		if ( $wp_filesystem && $wp_filesystem->move( untrailingslashit( $source ), $want, true ) ) {
+			return trailingslashit( $want );
+		}
+		return new WP_Error( 'kashi_rename', 'پوشه بسته گیت‌هاب به kashi تغییر نام داده نشد.' );
 	}
 
 	/** دانلود فایل Release گیت‌هاب (خصوصی یا عمومی) و بررسی آن */
@@ -425,7 +500,8 @@ final class Kashi_Updater {
 			return new WP_Error( 'kashi_checksum', 'فایل دانلودشده با فایل گیت‌هاب یکی نیست (SHA-256)؛ نصب متوقف شد.' );
 		}
 		$info = self::read_zip( $tmp );
-		if ( $info['folder'] !== dirname( self::$basename ) || '' === $info['version'] ) {
+		$fold = empty( $m['branch'] ) ? $info['folder'] === dirname( self::$basename ) : '' !== $info['folder'];
+		if ( ! $fold || '' === $info['version'] ) {
 			wp_delete_file( $tmp );
 			return new WP_Error( 'kashi_gh_bad', 'فایل گیت‌هاب بسته معتبر کاشی نیست (پوشه داخل zip باید ' . dirname( self::$basename ) . '/ باشد).' );
 		}
