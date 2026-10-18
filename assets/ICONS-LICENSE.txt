@@ -1,4 +1,5 @@
 Kashi icon set
+Product icons (category "محصولات"): drawn for Kashi in the same 24px / 2px-stroke style; a few are taken from Lucide (ISC). Free to use with Kashi.
 
 Line icons: Lucide (https://lucide.dev) — ISC License
 

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.4.1
+ * Version:           1.4.2
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.4.1';
+	const VERSION = '1.4.2';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -1389,12 +1389,16 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-row button .ic,.kashi-row a .ic{width:13px;height:13px}
 .kashi-row button:hover,.kashi-row a:hover{background:var(--accent-soft);border-color:var(--accent-line)}
 .kashi-search{position:relative;margin-bottom:8px}
+.kashi-igrp{display:flex;gap:4px;margin:0 2px 8px;flex-wrap:wrap}
+.kashi-igrp button{height:28px;padding:0 12px;border:1px solid var(--line2);border-radius:99px;background:transparent;color:var(--muted);font-size:12px;cursor:pointer}
+.kashi-igrp button.on{background:var(--accent-soft);border-color:var(--accent-line);color:#fff}
 .kashi-isz{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;color:var(--muted);font-size:12px}
 .kashi-isz .seg button{width:auto;padding:0 8px;font-size:11.5px}
-.kashi-igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:4px;max-height:340px;overflow:auto;padding:2px}
-.kashi-igrid button{display:flex;align-items:center;justify-content:center;height:44px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer;transition:background .12s,border-color .12s}
+.kashi-igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:4px;max-height:340px;overflow:auto;padding:2px}
+.kashi-igrid button{display:flex;align-items:center;justify-content:center;height:52px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer;transition:background .12s,border-color .12s}
 .kashi-igrid button:hover,.kashi-igrid button:focus-visible{background:var(--accent-soft);border-color:var(--accent-line)}
-.kashi-igrid button svg{width:22px;height:22px}
+.kashi-igrid button svg{width:26px;height:26px}
+#kashi-iname{min-height:20px;margin:6px 2px 0;color:var(--text);font-size:12.5px;font-weight:600}
 .kashi-search .ic{position:absolute;top:9px;right:10px;color:var(--dim)}
 .kashi-sel,.kashi-in{height:32px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:0 10px;min-width:160px}
 .kashi-in{direction:ltr;text-align:left;width:170px}
@@ -1509,8 +1513,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 <div class="kashi-settings" id="kashi-ipanel" style="left:12px;right:auto;width:420px;transform-origin:top left">
 	<h3><?php self::icon( 'shapes' ); ?><span id="kashi-ititle">کتابخانه آیکون</span></h3>
 	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-isearch" placeholder="جستجو: تلفن، سبد، واتساپ، کولر…"></div>
+	<div class="kashi-igrp" id="kashi-igrp"><button type="button" data-g="" class="on">همه</button><button type="button" data-g="p">محصولات</button><button type="button" data-g="u">عمومی</button><button type="button" data-g="b">برندها</button></div>
 	<div class="kashi-isz"><span>اندازه</span><div class="seg" id="kashi-isize"><button type="button" data-s="16">16</button><button type="button" data-s="20">20</button><button type="button" data-s="24" class="on">24</button><button type="button" data-s="32">32</button><button type="button" data-s="48">48</button></div></div>
 	<div class="kashi-igrid" id="kashi-igrid"></div>
+	<div id="kashi-iname"></div>
 	<div class="hint" id="kashi-ihint">کلیک = درج در محل نشانگر کد. آیکون‌ها رنگ متن اطراف را می‌گیرند (currentColor) و با کد ذخیره می‌شوند؛ به هیچ فایل خارجی وابسته نیستند.</div>
 </div>
 <div class="kashi-settings" id="kashi-lpanel" style="left:12px;right:auto;width:420px;transform-origin:top left">
@@ -2081,7 +2087,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 	/* ---------- کتابخانه آیکون ---------- */
 	var iBtn = $('kashi-icobtn'), iPanel = $('kashi-ipanel'), iGrid = $('kashi-igrid'), iSearch = $('kashi-isearch');
-	var icons = null, iSize = 24, iReplace = null;
+	var icons = null, iSize = 24, iReplace = null, iGroup = '';
 	function iconSvg(x, size, keep) {
 		var line = x.t === 'l', a = keep || {};
 		return '<svg' + (a.cls ? ' class="' + a.cls + '"' : ' class="kashi-icon"') + ' width="' + (a.w || size) + '" height="' + (a.h || size) + '" viewBox="0 0 24 24" ' +
@@ -2099,13 +2105,17 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function renderIcons() {
 		var q = iSearch.value.trim().toLowerCase();
 		iGrid.innerHTML = '';
-		var list = (icons || []).filter(function (x) { return !q || x.n.indexOf(q) > -1 || x.fa.indexOf(q) > -1; });
+		var list = (icons || []).filter(function (x) {
+			return (!iGroup || x.g === iGroup) && (!q || x.n.indexOf(q) > -1 || x.fa.indexOf(q) > -1);
+		});
 		if (!list.length) { hint(iGrid, 'آیکونی پیدا نشد.'); return; }
 		list.forEach(function (x) {
 			var b = document.createElement('button');
-			b.type = 'button'; b.title = x.fa + ' — ' + x.n.replace(/^brand-/, ''); b.setAttribute('aria-label', x.fa);
+			b.type = 'button'; b.title = x.fa; b.setAttribute('aria-label', x.fa);
 			b.innerHTML = iconSvg(x, 22);
 			b.addEventListener('click', function (e) { e.stopPropagation(); useIcon(x); });
+			b.addEventListener('mouseenter', function () { $('kashi-iname').textContent = x.fa; });
+			b.addEventListener('focus', function () { $('kashi-iname').textContent = x.fa; });
 			iGrid.appendChild(b);
 		});
 	}
@@ -2124,6 +2134,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	popup(iBtn, iPanel, loadIcons);
 	iSearch.addEventListener('input', renderIcons);
 	iSearch.addEventListener('click', function (e) { e.stopPropagation(); });
+	document.querySelectorAll('#kashi-igrp button').forEach(function (b) {
+		b.addEventListener('click', function (e) {
+			e.stopPropagation();
+			document.querySelectorAll('#kashi-igrp button').forEach(function (x) { x.classList.remove('on'); });
+			b.classList.add('on'); iGroup = b.getAttribute('data-g'); renderIcons();
+		});
+	});
 	document.querySelectorAll('#kashi-isize button').forEach(function (b) {
 		b.addEventListener('click', function (e) {
 			e.stopPropagation();
