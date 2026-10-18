@@ -24,7 +24,8 @@ final class Kashi_Updater {
 	const OPT_RELEASE = 'kashi_server_release';
 	const CACHE       = 'kashi_update_manifest';
 	const CACHE_TTL   = 6 * HOUR_IN_SECONDS;
-	const FAIL_TTL    = 30 * MINUTE_IN_SECONDS;
+	const FAIL_TTL    = 2 * HOUR_IN_SECONDS;      // در قطعی اینترنت، هر بار پیشخوان معطل نشود
+	const TIMEOUT     = 5;
 
 	/** @var string plugin_basename فایل اصلی، مثل kashi/kashi.php */
 	private static $basename = '';
@@ -49,6 +50,7 @@ final class Kashi_Updater {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 20 );
 		add_action( 'admin_post_kashi_save_settings', array( __CLASS__, 'save_settings' ) );
 		add_action( 'admin_post_kashi_gen_keys', array( __CLASS__, 'generate_keys' ) );
+		add_action( 'admin_post_kashi_offline_update', array( __CLASS__, 'offline_update' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'notices' ) );
 	}
 
@@ -212,7 +214,7 @@ final class Kashi_Updater {
 		$res = wp_safe_remote_get(
 			$s['url'],
 			array(
-				'timeout' => 12,
+				'timeout' => (int) apply_filters( 'kashi_update_timeout', self::TIMEOUT ),
 				'headers' => $headers,
 			)
 		);
@@ -389,6 +391,116 @@ final class Kashi_Updater {
 	}
 
 	/* ================================================================== *
+	 * آپدیت آفلاین: نصب فایل zip بارگذاری‌شده، با همان بررسی امضا
+	 * برای وقتی سرور آپدیت در دسترس نیست (قطعی اینترنت بین‌الملل).
+	 * ================================================================== */
+	public static function offline_update() {
+		check_admin_referer( 'kashi_offline_update' );
+		if ( ! current_user_can( 'update_plugins' ) || ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		$res = self::offline_install(
+			isset( $_FILES['kashi_offline_zip'] ) ? $_FILES['kashi_offline_zip'] : null, // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			isset( $_POST['kashi_offline_sig'] ) ? (string) wp_unslash( $_POST['kashi_offline_sig'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			! empty( $_POST['kashi_offline_trust'] )
+		);
+		if ( is_wp_error( $res ) ) {
+			set_transient( 'kashi_offline_msg_' . get_current_user_id(), $res->get_error_message(), 300 );
+			$flag = 'offerr';
+		} else {
+			$flag = 'offok';
+		}
+		wp_safe_redirect( add_query_arg( 'kashi_saved', $flag, admin_url( 'edit.php?post_type=lsec_section&page=kashi-settings' ) ) );
+		exit;
+	}
+
+	/**
+	 * بررسی بسته آفلاین: پوشه، نسخه، امضا.
+	 * @return array|WP_Error array( info, sha256 )
+	 */
+	public static function offline_check( $path, $sig, $trust ) {
+		$info = self::read_zip( $path );
+		$dir  = dirname( self::$basename );
+		if ( '' === $info['version'] || $info['folder'] !== $dir ) {
+			return new WP_Error( 'kashi_off_bad', 'این فایل، بسته افزونه کاشی نیست (پوشه داخل zip باید ' . $dir . '/ باشد).' );
+		}
+		if ( version_compare( $info['version'], self::$version, '<' ) ) {
+			return new WP_Error( 'kashi_off_old', 'نسخه این فایل (' . $info['version'] . ') از نسخه نصب‌شده (' . self::$version . ') قدیمی‌تر است.' );
+		}
+		$sha = strtolower( (string) hash_file( 'sha256', $path ) );
+		if ( '' !== self::pinned_key() ) {
+			$m = array(
+				'version'   => $info['version'],
+				'sha256'    => $sha,
+				'signature' => preg_replace( '#[^A-Za-z0-9+/=]#', '', $sig ),
+			);
+			if ( ! self::signature_ok( $m ) ) {
+				return new WP_Error( 'kashi_off_sig', 'امضای دیجیتال با این فایل نمی‌خواند؛ نصب نشد. امضا را از «سرور آپدیت» همان نسخه کپی کنید.' );
+			}
+		} elseif ( ! $trust ) {
+			return new WP_Error( 'kashi_off_trust', 'کلید عمومی امضا تنظیم نشده؛ برای نصب، تأیید کنید که فایل را از منبع مطمئن گرفته‌اید.' );
+		}
+		return array( $info, $sha );
+	}
+
+	/**
+	 * بررسی و نصب. جدا از offline_update تا قابل تست باشد.
+	 * @return true|WP_Error
+	 */
+	public static function offline_install( $file, $sig, $trust ) {
+		if ( ! is_array( $file ) || ! empty( $file['error'] ) || empty( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) ) {
+			return new WP_Error( 'kashi_off_nofile', 'فایل zip انتخاب نشد یا کامل بارگذاری نشد.' );
+		}
+		if ( (int) $file['size'] > 20 * MB_IN_BYTES ) {
+			return new WP_Error( 'kashi_off_big', 'حجم فایل بیش از حد مجاز است.' );
+		}
+		$path = $file['tmp_name'];
+		$chk  = self::offline_check( $path, $sig, $trust );
+		if ( is_wp_error( $chk ) ) {
+			return $chk;
+		}
+		list( $info, $sha ) = $chk;
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		$tmp = wp_tempnam( 'kashi-offline.zip' );
+		if ( ! $tmp || ! @move_uploaded_file( $path, $tmp ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'kashi_off_move', 'فایل در پوشه موقت ذخیره نشد.' );
+		}
+		if ( ! hash_equals( $sha, strtolower( (string) hash_file( 'sha256', $tmp ) ) ) ) {
+			wp_delete_file( $tmp );
+			return new WP_Error( 'kashi_off_changed', 'فایل هنگام انتقال تغییر کرد؛ نصب نشد.' );
+		}
+		$skin     = new WP_Ajax_Upgrader_Skin();
+		$upgrader = new Plugin_Upgrader( $skin );
+		$r        = $upgrader->install(
+			$tmp,
+			array(
+				'overwrite_package'  => true,
+				'clear_update_cache' => true,
+			)
+		);
+		if ( file_exists( $tmp ) ) {
+			wp_delete_file( $tmp );
+		}
+		if ( is_wp_error( $r ) ) {
+			return $r;
+		}
+		if ( ! $r ) {
+			$err = $skin->get_errors();
+			if ( is_wp_error( $err ) && $err->has_errors() ) {
+				return $err;
+			}
+			return new WP_Error( 'kashi_off_fail', 'نصب انجام نشد. دسترسی نوشتن روی پوشه افزونه‌ها را بررسی کنید.' );
+		}
+		self::flush_cache();
+		self::set_status( 'نسخه ' . $info['version'] . ' به‌صورت آفلاین نصب شد.' );
+		return true;
+	}
+
+	/* ================================================================== *
 	 * سرور: /wp-json/kashi/v1/update
 	 * ================================================================== */
 	public static function register_route() {
@@ -441,6 +553,7 @@ final class Kashi_Updater {
 			'version'      => '',
 			'requires'     => '',
 			'requires_php' => '',
+			'folder'       => '',
 		);
 		if ( ! class_exists( 'ZipArchive' ) ) {
 			return $info;
@@ -451,7 +564,8 @@ final class Kashi_Updater {
 		}
 		for ( $i = 0; $i < $zip->numFiles; $i++ ) {
 			$name = $zip->getNameIndex( $i );
-			if ( preg_match( '#^[^/]+/kashi\.php$#', $name ) ) {
+			if ( preg_match( '#^([^/]+)/kashi\.php$#', $name, $fm ) ) {
+				$info['folder'] = $fm[1];
 				$head = substr( (string) $zip->getFromIndex( $i ), 0, 8192 );
 				foreach ( array(
 					'version'      => 'Version',
@@ -503,8 +617,15 @@ final class Kashi_Updater {
 				'noversion'   => array( 'warning', 'نسخه از داخل فایل zip خوانده نشد؛ شماره نسخه را دستی وارد کنید.' ),
 				'badkey'      => array( 'error', 'کلید خصوصی نامعتبر است؛ نسخه امضا نشد.' ),
 				'keymismatch' => array( 'error', 'این کلید خصوصی با کلید عمومی این سرور یکی نیست؛ نسخه امضا نشد.' ),
+				'offok'       => array( 'success', 'کاشی با فایل آفلاین به‌روز شد.' ),
+				'offerr'      => array( 'error', '' ),
 			);
 			$n = isset( $all[ $code ] ) ? $all[ $code ] : $all['1'];
+			if ( 'offerr' === $code ) {
+				$k    = 'kashi_offline_msg_' . get_current_user_id();
+				$n[1] = 'آپدیت آفلاین انجام نشد: ' . (string) get_transient( $k );
+				delete_transient( $k );
+			}
 			echo '<div class="notice notice-' . esc_attr( $n[0] ) . ' is-dismissible"><p><b>کاشی:</b> ' . esc_html( $n[1] ) . '</p></div>';
 		}
 		// phpcs:enable
@@ -530,6 +651,9 @@ final class Kashi_Updater {
 		);
 		update_option( self::OPT, $new, false );
 		self::flush_cache();
+		if ( class_exists( 'Kashi_Net' ) ) {
+			Kashi_Net::save_from_post();
+		}
 
 		$flag = '1';
 		if ( $new['server'] ) {
@@ -730,6 +854,10 @@ final class Kashi_Updater {
 								$signed = ! empty( $r['signature'] ) && isset( $r['signed_for'] ) && $r['version'] && self::sign_message( $r['version'], $r['sha256'] ) === $r['signed_for'];
 								?>
 								<p><?php echo $signed ? '<span class="kashi-pill ok">نسخه فعلی امضا شده است</span>' : '<span class="kashi-pill" style="background:#fcf0e3;color:#8a4b00">نسخه فعلی امضا ندارد</span>'; ?></p>
+								<?php if ( $signed ) : ?>
+									<p class="description">امضای این نسخه برای «آپدیت آفلاین» (همراه فایل zip به سایت‌ها بدهید):</p>
+									<p><code class="copy" title="کلیک برای کپی" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( $r['signature'] ); ?></code></p>
+								<?php endif; ?>
 								<p style="margin-top:10px"><input type="password" class="ltr" name="kashi_sign_secret" value="" autocomplete="off" placeholder="کلید خصوصی امضا را اینجا بچسبانید (ذخیره نمی‌شود)" style="width:100%;max-width:520px"></p>
 								<p class="description">هنگام انتشار هر نسخه جدید، کلید خصوصی را بچسبانید و ذخیره کنید. <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>" onclick="return confirm('با ساخت کلید جدید، باید کلید عمومی را در همه سایت‌ها عوض کنید. ادامه؟');">ساخت کلید جدید</a></p>
 							<?php endif; ?>
@@ -741,7 +869,35 @@ final class Kashi_Updater {
 					</div>
 				</div>
 
-				<?php submit_button( 'ذخیره تنظیمات' ); ?>
+				<?php
+				if ( class_exists( 'Kashi_Net' ) ) {
+					Kashi_Net::card();
+				}
+				submit_button( 'ذخیره تنظیمات' );
+				?>
+			</form>
+
+			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="kashi-card">
+				<input type="hidden" name="action" value="kashi_offline_update">
+				<?php wp_nonce_field( 'kashi_offline_update' ); ?>
+				<h2>آپدیت آفلاین</h2>
+				<p class="desc">وقتی سرور آپدیت در دسترس نیست (مثلاً در قطعی اینترنت بین‌الملل)، فایل zip نسخه جدید را مستقیم بارگذاری کنید. همان بررسی‌های امنیتی آپدیت خودکار انجام می‌شود و داده‌ها و صفحه‌ها دست نمی‌خورند.</p>
+				<div class="kashi-row">
+					<label for="kashi_offline_zip">فایل zip</label>
+					<div><input type="file" id="kashi_offline_zip" name="kashi_offline_zip" accept=".zip,application/zip" required></div>
+				</div>
+				<?php if ( '' !== self::pinned_key() ) : ?>
+				<div class="kashi-row">
+					<label for="kashi_offline_sig">امضای دیجیتال نسخه</label>
+					<div><input type="text" class="ltr" id="kashi_offline_sig" name="kashi_offline_sig" autocomplete="off" required><p class="description">در «سرور آپدیت» سایت اصلی، کنار همان نسخه نمایش داده می‌شود. بدون امضای معتبر نصب نمی‌شود.</p></div>
+				</div>
+				<?php else : ?>
+				<div class="kashi-row">
+					<label>تأیید</label>
+					<div><label><input type="checkbox" name="kashi_offline_trust" value="1" required> این فایل را از منبع مطمئن (خودم) گرفته‌ام</label><p class="description">پیشنهاد: «کلید عمومی امضا» را بالاتر تنظیم کنید تا فقط فایل‌های امضاشده نصب شوند.</p></div>
+				</div>
+				<?php endif; ?>
+				<p><button type="submit" class="button button-primary">بارگذاری و نصب</button></p>
 			</form>
 			<script>
 			(function () {

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.2.0';
+	const VERSION = '1.3.0';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -342,7 +342,7 @@ final class Kashi {
 	 * ------------------------------------------------------------------ */
 	private static function print_icon_sprite() {
 		echo '<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">'
-			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol>'
+			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
 			. '</svg>';
 	}
 
@@ -1214,10 +1214,11 @@ final class Kashi {
 <title><?php echo esc_html( 'ویرایش: ' . get_the_title( $post ) ); ?></title>
 <?php wp_print_styles(); ?>
 <style>
+@font-face{font-family:"Vazirmatn";src:url(<?php echo esc_url( plugins_url( 'assets/fonts/vazirmatn.woff2', KASHI_FILE ) ); ?>) format("woff2");font-weight:100 900;font-display:swap}
 :root{
 	--bg:#0d0f14;--panel:#13161d;--panel2:#191d26;--hover:#20252f;--line:#232834;--line2:#2e3442;
-	--text:#e6e8ee;--muted:#8b92a5;--dim:#5c6375;
-	--accent:#7c6cff;--accent-h:#6b5af2;--accent-soft:rgba(124,108,255,.14);--accent-line:rgba(124,108,255,.45);
+	--text:#e6e8ee;--muted:#8b92a5;--dim:#80879a;
+	--accent:#6b5af2;--accent-h:#5b4ae0;--accent-soft:rgba(124,108,255,.14);--accent-line:rgba(124,108,255,.45);
 	--ok:#34c98a;--warn:#f0b13c;--err:#f0555c;--info:#5aa9ff;
 	--r:8px;--font:"Vazirmatn","IRANSansX","IRANSans","Segoe UI",Tahoma,sans-serif;
 }
@@ -1226,7 +1227,10 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:var(--font);font-size
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 .ic{width:16px;height:16px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
-kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.14);direction:ltr}
+kbd{font-family:inherit;font-size:10.5px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.16);color:#e8e6ff;direction:ltr}
+:focus-visible{outline:2px solid var(--accent-line);outline-offset:1px}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent-line)!important;outline-offset:0}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
 /* ---------- نوار بالا ---------- */
 .kashi-bar{height:56px;display:flex;align-items:center;gap:6px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -1250,9 +1254,16 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 .sw input:checked+i{background:var(--accent)}
 .sw input:checked+i::after{transform:translateX(-12px)}
 .sw input:focus-visible+i{box-shadow:0 0 0 2px var(--accent-line)}
+.tog{position:relative;cursor:pointer}
+.tog input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.tog:has(input:checked){background:var(--accent-soft);color:#fff;border-color:var(--accent-line)}
+.tog:has(input:focus-visible){outline:2px solid var(--accent-line);outline-offset:1px}
+.kashi-settings .swrow{height:auto;white-space:normal;color:var(--text);border-radius:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;margin-top:8px;border-top:1px solid var(--line)}
+.kashi-settings .swrow i{flex:0 0 28px}.kashi-settings .swrow>span{flex:1;min-width:0}
+.kashi-settings .swrow b{display:block;font-size:13px}.kashi-settings .swrow small{display:block;color:var(--muted);font-size:12px;line-height:1.7}
 
 .seg{display:inline-flex;padding:3px;gap:2px;border-radius:var(--r);background:var(--bg);border:1px solid var(--line)}
-.seg button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;border:0;border-radius:6px;background:transparent;color:var(--dim)}
+.seg button{display:inline-flex;align-items:center;justify-content:center;width:32px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--dim)}
 .seg button:hover{color:var(--text)}
 .seg button.on{background:var(--panel2);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.4)}
 
@@ -1273,8 +1284,9 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 /* ---------- چیدمان ---------- */
 .kashi-main{display:flex;height:calc(100% - 56px);direction:ltr}
 .kashi-left{width:40%;min-width:300px;height:100%;display:flex;flex-direction:column;background:var(--panel)}
-.kashi-div{width:5px;cursor:col-resize;background:var(--line);transition:background .15s}
-.kashi-div:hover{background:var(--accent)}
+.kashi-div{position:relative;width:1px;flex:0 0 1px;cursor:col-resize;background:var(--line);transition:background .15s;z-index:5}
+.kashi-div::before{content:"";position:absolute;top:0;bottom:0;left:-6px;right:-6px}
+.kashi-div:hover,.kashi-div:focus-visible,.kashi-drag .kashi-div{background:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .kashi-view{flex:1;height:100%;background:#0a0b0f;display:flex;justify-content:center;overflow:auto;padding:0}
 .kashi-view iframe{border:0;background:#fff;width:100%;height:100%;transition:width .25s ease;box-shadow:0 0 0 1px var(--line)}
 .kashi-drag .kashi-view iframe{pointer-events:none}
@@ -1306,8 +1318,8 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 .kashi-item .fw span .ic{width:13px;height:13px}
 .kashi-item .fw input:checked+span{color:var(--text);border-color:var(--accent-line);background:var(--accent-soft)}
 .kashi-item .acts{display:flex;gap:1px;opacity:0;transition:opacity .15s}
-.kashi-item:hover .acts,.kashi-item.on .acts{opacity:1}
-.kashi-item .acts button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:6px;background:transparent;color:var(--muted)}
+.kashi-item:hover .acts,.kashi-item.on .acts,.kashi-item:focus-within .acts{opacity:1}
+.kashi-item .acts button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--muted)}
 .kashi-item .acts button .ic{width:14px;height:14px}
 .kashi-item .acts button:hover{background:var(--hover);color:var(--text)}
 .kashi-item .acts button[data-a=del]:hover{background:rgba(240,85,92,.15);color:var(--err)}
@@ -1396,7 +1408,6 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 .kashi-toast{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:var(--panel2);border:1px solid var(--line2);box-shadow:0 12px 30px rgba(0,0,0,.5);color:var(--text);font-size:12.5px;max-width:520px;animation:kashi-in .18s ease-out;pointer-events:auto}
 .kashi-toast.ok .ic{color:var(--ok)}.kashi-toast.err{border-color:rgba(240,85,92,.4)}.kashi-toast.err .ic{color:var(--err)}
 
-@media (max-width:1640px){.sw span{display:none}.sw{padding:0 6px}}
 @media (max-width:1360px){.tb span:not(.kashi-badge){display:none}.ttl input{width:150px}}
 </style>
 </head>
@@ -1415,17 +1426,15 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		<button type="button" class="tb" id="kashi-hist" title="تاریخچه نسخه‌ها"><?php self::icon( 'history' ); ?><span>تاریخچه</span></button>
 		<button type="button" class="tb" id="kashi-vedit" title="ویرایش مستقیم متن، لینک و تصویر داخل پیش‌نمایش"><?php self::icon( 'pen' ); ?><span>ویرایش مستقیم</span></button>
 		<button type="button" class="tb" id="kashi-seo" title="بررسی سئو"><?php self::icon( 'gauge' ); ?><span>سئو</span><span id="kashi-seo-n" class="kashi-badge"></span></button>
-		<span class="vr"></span>
-		<label class="sw" title="استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند"><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i><span>محدود کردن CSS</span></label>
-		<label class="sw" title="پیش‌نمایش با هر تغییر به‌روز شود"><input type="checkbox" id="kashi-auto" checked><i></i><span>پیش‌نمایش زنده</span></label>
 	</div>
 	<span class="kashi-sep"></span>
 	<div class="g">
 		<div class="seg kashi-dev">
-			<button type="button" data-w="100%" class="on" title="دسکتاپ"><?php self::icon( 'monitor' ); ?></button>
-			<button type="button" data-w="768px" title="تبلت"><?php self::icon( 'tablet' ); ?></button>
-			<button type="button" data-w="390px" title="موبایل"><?php self::icon( 'phone' ); ?></button>
+			<button type="button" data-w="100%" class="on" aria-pressed="true" title="دسکتاپ"><?php self::icon( 'monitor' ); ?></button>
+			<button type="button" data-w="768px" aria-pressed="false" title="تبلت"><?php self::icon( 'tablet' ); ?></button>
+			<button type="button" data-w="390px" aria-pressed="false" title="موبایل"><?php self::icon( 'phone' ); ?></button>
 		</div>
+		<label class="ib tog" title="پیش‌نمایش زنده: با هر تغییر به‌روز شود"><input type="checkbox" id="kashi-auto" checked aria-label="پیش‌نمایش زنده"><?php self::icon( 'zap' ); ?></label>
 		<button type="button" class="ib" id="kashi-refresh" title="بروزرسانی پیش‌نمایش"><?php self::icon( 'refresh' ); ?></button>
 		<a class="ib" href="<?php echo esc_url( $view ); ?>" target="_blank" title="مشاهده در سایت"><?php self::icon( 'external' ); ?></a>
 		<span class="vr"></span>
@@ -1447,6 +1456,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		<span><b>پیش‌فرض قالب</b><small>همان چیدمان قالب <?php echo esc_html( wp_get_theme()->get( 'Name' ) ); ?> با کانتینر و تنظیمات خودش.</small></span></label>
 	<div class="row"><span>عرض کانتینر بخش‌ها</span><input type="number" id="kashi-boxw" min="320" max="3000" step="10" value="<?php echo (int) $boxw; ?>"></div>
 	<div class="hint">بخش‌هایی که «تمام‌عرض» نیستند در این عرض (پیکسل) وسط‌چین می‌شوند.</div>
+	<label class="swrow sw"><span><b>محدود کردن CSS</b><small>استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند.</small></span><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i></label>
 </div>
 <?php endif; ?>
 <?php if ( $is_section ) : $hf = self::hf_meta( $id ); ?>
@@ -1474,6 +1484,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		<div class="row"><span>المان قالب (پیشرفته)</span><input type="text" id="kashi-hftarget" class="kashi-in" value="<?php echo esc_attr( $hf['target'] ); ?>" placeholder="خودکار"></div>
 		<div class="hint">اگر چند هدر/فوتر داشته باشید، دقیق‌ترین شرط برنده است (صفحه‌های مشخص ← صفحه اصلی ← کل سایت). «المان قالب» را فقط وقتی پر کنید که هدر قالب‌تان تگ &lt;header&gt; ندارد؛ مثلاً <code>#masthead</code> یا <code>.site-header</code>.</div>
 	</div>
+	<label class="swrow sw"><span><b>محدود کردن CSS</b><small>استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند.</small></span><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i></label>
 </div>
 <?php endif; ?>
 <div class="kashi-settings" id="kashi-spanel" style="width:440px">
@@ -1492,7 +1503,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 	<div class="hint"><b>کپی:</b> نسخه مستقل که جدا ویرایش می‌شود. <b>لینک‌شده:</b> تغییر اصل آن، در همه صفحه‌ها اعمال می‌شود.</div>
 	<div class="kashi-plist" id="kashi-llist"></div>
 </div>
-<div id="kashi-toasts"></div>
+<div id="kashi-toasts" role="status" aria-live="polite"></div>
 <div class="kashi-main">
 	<div class="kashi-left">
 		<div class="kashi-blocks">
@@ -1509,7 +1520,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		<div id="kashi-warn" style="display:none"><?php self::icon( 'alert' ); ?><span>کد PHP اینجا اجرا نمی‌شود و حذف می‌شود. شورت‌کدها کار می‌کنند؛ برای PHP خودتان از Code Snippets یا پوشه <code>wp-content/kashi-php</code> استفاده کنید.</span></div>
 		<div class="kashi-code"><textarea id="kashi-code" spellcheck="false"></textarea></div>
 	</div>
-	<div class="kashi-div" id="kashi-div"></div>
+	<div class="kashi-div" id="kashi-div" role="separator" aria-orientation="vertical" aria-label="تغییر اندازه پنل‌ها (کلیدهای چپ و راست)" tabindex="0"></div>
 	<div class="kashi-view"><iframe id="kashi-frame" name="kashi-frame" title="پیش‌نمایش"></iframe></div>
 </div>
 <form id="kashi-live" method="post" target="kashi-frame" action="<?php echo esc_url( self::live_url( $post ) ); ?>" style="display:none">
@@ -1535,6 +1546,11 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		[['kashi-gear', 'kashi-settings'], ['kashi-hfbtn', 'kashi-hfpanel'], ['kashi-hist', 'kashi-hpanel'], ['kashi-seo', 'kashi-spanel'], ['kashi-libbtn', 'kashi-lpanel']].forEach(function (pair) {
 			var b = document.getElementById(pair[0]), pn = document.getElementById(pair[1]);
 			if (b && pn !== keep) { b.classList.remove('on'); }
+		});
+	}
+	function a11y(root) {
+		(root || document).querySelectorAll('button[title], a[title]').forEach(function (el) {
+			if (!el.hasAttribute('aria-label')) { el.setAttribute('aria-label', el.getAttribute('title')); }
 		});
 	}
 	function ic(n) { return '<svg class="ic" aria-hidden="true"><use href="#lsi-' + n + '"></use></svg>'; }
@@ -1658,6 +1674,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 		});
 		markActive();
 		updateBadges();
+		a11y(list);
 	}
 
 	function act(a, i) {
@@ -2468,7 +2485,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 			'[contenteditable][data-kv-edit]{cursor:text;caret-color:#7c6cff}' +
 			'#kashi-vbar{position:absolute;z-index:2147483647;display:none;align-items:center;gap:6px;padding:6px;background:#13161d;color:#e6e8ee;border:1px solid #2e3442;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);font:12px/1.4 Vazirmatn,Tahoma,sans-serif;direction:rtl}' +
 			'#kashi-vbar .lb{display:inline-flex;align-items:center;gap:6px;padding:0 6px;color:#8b92a5}' +
-			'#kashi-vbar button{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:0;border-radius:7px;background:#7c6cff;color:#fff;font:inherit;cursor:pointer}' +
+			'#kashi-vbar button{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:0;border-radius:7px;background:#6b5af2;color:#fff;font:inherit;cursor:pointer}' +
 			'#kashi-vbar button:hover{background:#6b5af2}' +
 			'#kashi-vbar input{height:28px;width:220px;padding:0 8px;border:1px solid #2e3442;border-radius:7px;background:#0d0f14;color:#e6e8ee;font:inherit;direction:ltr}' +
 			'#kashi-vbar .ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}';
@@ -2502,13 +2519,20 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 	/* ---------- اندازه‌ها ---------- */
 	document.querySelectorAll('.kashi-dev button').forEach(function (b) {
 		b.addEventListener('click', function () {
-			document.querySelectorAll('.kashi-dev button').forEach(function (x) { x.classList.remove('on'); });
-			b.classList.add('on');
+			document.querySelectorAll('.kashi-dev button').forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+			b.classList.add('on'); b.setAttribute('aria-pressed', 'true');
 			frame.style.width = b.getAttribute('data-w');
 		});
 	});
 
 	var div = $('kashi-div'), pane = document.querySelector('.kashi-left'), main = document.querySelector('.kashi-main');
+	div.addEventListener('keydown', function (e) {
+		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
+		e.preventDefault();
+		var r = main.getBoundingClientRect(), w = pane.getBoundingClientRect().width + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 80 : 24);
+		pane.style.width = Math.min(Math.max(w, 260), r.width - 200) + 'px';
+		if (cm) { cm.refresh(); }
+	});
 	div.addEventListener('mousedown', function (e) {
 		e.preventDefault();
 		document.body.classList.add('kashi-drag');
@@ -2533,6 +2557,7 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 	/* ---------- شروع ---------- */
 	(cfg.blocks || []).forEach(function (b) { blocks.push(makeBlock(b)); });
 	if (!blocks.length) { blocks.push(makeBlock({ name: 'هیرو' })); }
+	a11y(document);
 	renderList();
 	select(0, false);
 	refresh();
@@ -3621,6 +3646,8 @@ kbd{font-family:inherit;font-size:10px;opacity:.7;padding:1px 5px;border-radius:
 
 define( 'KASHI_FILE', __FILE__ );
 require_once __DIR__ . '/includes/class-kashi-updater.php';
+require_once __DIR__ . '/includes/class-kashi-net.php';
 
 Kashi::init();
 Kashi_Updater::init( __FILE__, Kashi::VERSION );
+Kashi_Net::init( __FILE__ );
