@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.4.0
+ * Version:           1.4.1
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.4.0';
+	const VERSION = '1.4.1';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -342,7 +342,7 @@ final class Kashi {
 	 * ------------------------------------------------------------------ */
 	private static function print_icon_sprite() {
 		echo '<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">'
-			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
+			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-shapes" viewBox="0 0 24 24"><circle cx="7" cy="7" r="4"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><path d="M7 13.5 11 20H3z"/><circle cx="17" cy="17" r="4"/></symbol><symbol id="lsi-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
 			. '</svg>';
 	}
 
@@ -1200,6 +1200,7 @@ final class Kashi {
 			'editBase'  => admin_url( 'admin-post.php?action=kashi_edit&post=' ),
 			'isSection' => self::CPT === $post->post_type,
 			'seoPlugin' => self::seo_plugin_name(),
+			'icons'     => plugins_url( 'assets/icons.json', KASHI_FILE ) . '?v=' . self::VERSION,
 		);
 		$is_section = ( self::CPT === $post->post_type );
 		$layout     = self::saved_layout( $id );
@@ -1388,13 +1389,19 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-row button .ic,.kashi-row a .ic{width:13px;height:13px}
 .kashi-row button:hover,.kashi-row a:hover{background:var(--accent-soft);border-color:var(--accent-line)}
 .kashi-search{position:relative;margin-bottom:8px}
+.kashi-isz{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 8px;color:var(--muted);font-size:12px}
+.kashi-isz .seg button{width:auto;padding:0 8px;font-size:11.5px}
+.kashi-igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:4px;max-height:340px;overflow:auto;padding:2px}
+.kashi-igrid button{display:flex;align-items:center;justify-content:center;height:44px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer;transition:background .12s,border-color .12s}
+.kashi-igrid button:hover,.kashi-igrid button:focus-visible{background:var(--accent-soft);border-color:var(--accent-line)}
+.kashi-igrid button svg{width:22px;height:22px}
 .kashi-search .ic{position:absolute;top:9px;right:10px;color:var(--dim)}
 .kashi-sel,.kashi-in{height:32px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:0 10px;min-width:160px}
 .kashi-in{direction:ltr;text-align:left;width:170px}
 .kashi-sel:focus,.kashi-in:focus{outline:0;border-color:var(--accent-line)}
 .kashi-settings .hint code{direction:ltr;display:inline-block;background:rgba(255,255,255,.06);padding:0 5px;border-radius:4px}
-#kashi-lsearch{width:100%;height:34px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:0 34px 0 10px}
-#kashi-lsearch:focus{outline:0;border-color:var(--accent-line)}
+#kashi-lsearch,#kashi-isearch{width:100%;height:34px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:0 34px 0 10px}
+#kashi-lsearch:focus,#kashi-isearch:focus{outline:0;border-color:var(--accent-line)}
 
 .kashi-chk{display:flex;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:3px;line-height:1.7}
 .kashi-chk.go{cursor:pointer}.kashi-chk.go:hover{background:var(--panel2)}
@@ -1499,6 +1506,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	<div class="hint">هر ذخیره یک نسخه ثبت می‌کند (<?php echo (int) self::MAX_REVS; ?> نسخه آخر). بازگردانی ابتدا در ویرایشگر اعمال می‌شود؛ برای ثبت، ذخیره کنید.</div>
 	<div class="kashi-plist" id="kashi-hlist"></div>
 </div>
+<div class="kashi-settings" id="kashi-ipanel" style="left:12px;right:auto;width:420px;transform-origin:top left">
+	<h3><?php self::icon( 'shapes' ); ?><span id="kashi-ititle">کتابخانه آیکون</span></h3>
+	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-isearch" placeholder="جستجو: تلفن، سبد، واتساپ، کولر…"></div>
+	<div class="kashi-isz"><span>اندازه</span><div class="seg" id="kashi-isize"><button type="button" data-s="16">16</button><button type="button" data-s="20">20</button><button type="button" data-s="24" class="on">24</button><button type="button" data-s="32">32</button><button type="button" data-s="48">48</button></div></div>
+	<div class="kashi-igrid" id="kashi-igrid"></div>
+	<div class="hint" id="kashi-ihint">کلیک = درج در محل نشانگر کد. آیکون‌ها رنگ متن اطراف را می‌گیرند (currentColor) و با کد ذخیره می‌شوند؛ به هیچ فایل خارجی وابسته نیستند.</div>
+</div>
 <div class="kashi-settings" id="kashi-lpanel" style="left:12px;right:auto;width:420px;transform-origin:top left">
 	<h3><?php self::icon( 'layers' ); ?>کتابخانه بخش‌ها</h3>
 	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-lsearch" placeholder="جستجو…"></div>
@@ -1512,6 +1526,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			<div class="kashi-blocks-head">
 				<span class="t">بخش‌های صفحه <small id="kashi-count">0</small></span>
 				<span class="hb">
+					<button type="button" class="btn-s" id="kashi-icobtn" title="کتابخانه آیکون"><?php self::icon( 'shapes' ); ?>آیکون</button>
 					<button type="button" class="btn-s" id="kashi-libbtn"><?php self::icon( 'layers' ); ?>کتابخانه</button>
 					<button type="button" class="btn-s acc" id="kashi-add"><?php self::icon( 'plus' ); ?>افزودن بخش</button>
 				</span>
@@ -1545,7 +1560,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	/* فقط یک پنل شناور در هر لحظه باز باشد */
 	function closeOthers(keep) {
 		document.querySelectorAll('.kashi-settings.open').forEach(function (p) { if (p !== keep) { p.classList.remove('open'); } });
-		[['kashi-gear', 'kashi-settings'], ['kashi-hfbtn', 'kashi-hfpanel'], ['kashi-hist', 'kashi-hpanel'], ['kashi-seo', 'kashi-spanel'], ['kashi-libbtn', 'kashi-lpanel']].forEach(function (pair) {
+		[['kashi-gear', 'kashi-settings'], ['kashi-hfbtn', 'kashi-hfpanel'], ['kashi-hist', 'kashi-hpanel'], ['kashi-seo', 'kashi-spanel'], ['kashi-libbtn', 'kashi-lpanel'], ['kashi-icobtn', 'kashi-ipanel']].forEach(function (pair) {
 			var b = document.getElementById(pair[0]), pn = document.getElementById(pair[1]);
 			if (b && pn !== keep) { b.classList.remove('on'); }
 		});
@@ -2063,6 +2078,60 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		}).catch(function () { toast('ارتباط با سرور برقرار نشد.'); });
 	}
 	popup(lBtn, lPanel, loadLib);
+
+	/* ---------- کتابخانه آیکون ---------- */
+	var iBtn = $('kashi-icobtn'), iPanel = $('kashi-ipanel'), iGrid = $('kashi-igrid'), iSearch = $('kashi-isearch');
+	var icons = null, iSize = 24, iReplace = null;
+	function iconSvg(x, size, keep) {
+		var line = x.t === 'l', a = keep || {};
+		return '<svg' + (a.cls ? ' class="' + a.cls + '"' : ' class="kashi-icon"') + ' width="' + (a.w || size) + '" height="' + (a.h || size) + '" viewBox="0 0 24 24" ' +
+			(line ? 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"' : 'fill="currentColor"') +
+			(a.style ? ' style="' + a.style + '"' : '') + ' aria-hidden="true">' + x.b + '</svg>';
+	}
+	function loadIcons() {
+		$('kashi-ititle').textContent = iReplace ? 'تعویض آیکون' : 'کتابخانه آیکون';
+		if (icons) { renderIcons(); setTimeout(function () { iSearch.focus(); }, 30); return; }
+		iGrid.innerHTML = ''; hint(iGrid, 'در حال بارگذاری…');
+		fetch(cfg.icons, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+			.then(function (d) { icons = Array.isArray(d) ? d : []; renderIcons(); iSearch.focus(); })
+			.catch(function () { iGrid.innerHTML = ''; hint(iGrid, 'فهرست آیکون‌ها بارگذاری نشد.'); });
+	}
+	function renderIcons() {
+		var q = iSearch.value.trim().toLowerCase();
+		iGrid.innerHTML = '';
+		var list = (icons || []).filter(function (x) { return !q || x.n.indexOf(q) > -1 || x.fa.indexOf(q) > -1; });
+		if (!list.length) { hint(iGrid, 'آیکونی پیدا نشد.'); return; }
+		list.forEach(function (x) {
+			var b = document.createElement('button');
+			b.type = 'button'; b.title = x.fa + ' — ' + x.n.replace(/^brand-/, ''); b.setAttribute('aria-label', x.fa);
+			b.innerHTML = iconSvg(x, 22);
+			b.addEventListener('click', function (e) { e.stopPropagation(); useIcon(x); });
+			iGrid.appendChild(b);
+		});
+	}
+	function openIcons() {
+		closeOthers(iPanel); iPanel.classList.add('open'); iBtn.classList.add('on'); loadIcons();
+	}
+	function useIcon(x) {
+		if (iReplace) { var r = iReplace; iReplace = null; closePop(iBtn, iPanel); vReplaceSvg(r, x); return; }
+		var svg = iconSvg(x, iSize);
+		if (cm) { cm.replaceSelection(svg); cm.focus(); }
+		else { var a = ta.selectionStart, z = ta.selectionEnd; ta.value = ta.value.slice(0, a) + svg + ta.value.slice(z); ta.dispatchEvent(new Event('input')); }
+		closePop(iBtn, iPanel);
+		toast('آیکون «' + x.fa + '» درج شد', 'ok');
+	}
+	iBtn.addEventListener('click', function () { iReplace = null; });
+	popup(iBtn, iPanel, loadIcons);
+	iSearch.addEventListener('input', renderIcons);
+	iSearch.addEventListener('click', function (e) { e.stopPropagation(); });
+	document.querySelectorAll('#kashi-isize button').forEach(function (b) {
+		b.addEventListener('click', function (e) {
+			e.stopPropagation();
+			document.querySelectorAll('#kashi-isize button').forEach(function (x) { x.classList.remove('on'); });
+			b.classList.add('on'); iSize = +b.getAttribute('data-s');
+		});
+	});
+
 	lSearch.addEventListener('input', renderLib);
 	lSearch.addEventListener('click', function (e) { e.stopPropagation(); });
 
@@ -2283,6 +2352,82 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		var a = ' ' + name + '="' + vEscAttr(val) + '"';
 		return re.test(tag) ? tag.replace(re, a) : tag.replace(/\s*(\/?)>$/, a + '$1>');
 	}
+	function vSetStyle(tag, prop, val) {
+		var parts = vAttrOf(tag, 'style').split(';').map(function (x) { return x.trim(); }).filter(function (x) {
+			return x && x.split(':')[0].trim().toLowerCase() !== prop;
+		});
+		if (val) { parts.push(prop + ': ' + val); }
+		return parts.length ? vSetAttr(tag, 'style', parts.join('; ')) : vDelAttr(tag, 'style');
+	}
+	function vHex(c) {
+		var m = String(c || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+		if (!m || (m[4] !== undefined && +m[4] === 0)) { return ''; }
+		return '#' + [m[1], m[2], m[3]].map(function (x) { return ('0' + (+x).toString(16)).slice(-2); }).join('');
+	}
+	/* کنترل‌های رنگ: تغییر زنده در پیش‌نمایش، ثبت در کد هنگام انتخاب نهایی */
+	function vColors(withBg) {
+		var h = '<label class="cl" title="رنگ متن / آیکون"><input type="color" data-c="color"><span>' + ic('drop') + 'رنگ</span></label>';
+		if (withBg) { h += '<label class="cl" title="رنگ پس‌زمینه"><input type="color" data-c="background-color"><span class="bgi">' + ic('drop') + 'پس‌زمینه</span></label>'; }
+		return h + '<button data-v="nocolor" class="ghost" title="برگرداندن رنگ اصلی">' + ic('refresh') + '</button>';
+	}
+	function vBindColors(bar, el, bi, path) {
+		var cs = vDoc.defaultView.getComputedStyle(el);
+		bar.querySelectorAll('input[data-c]').forEach(function (inp) {
+			var prop = inp.getAttribute('data-c');
+			var dot = inp.parentNode.querySelector('.ic');
+			inp.value = vHex(prop === 'color' ? cs.color : cs.backgroundColor) || (prop === 'color' ? '#000000' : '#ffffff');
+			dot.style.fill = inp.value;
+			inp.addEventListener('input', function () { el.style.setProperty(prop, inp.value); dot.style.fill = inp.value; });
+			inp.addEventListener('change', function () {
+				var v = inp.value;
+				if (vEditTag(bi, path, function (t) { return vSetStyle(t, prop, v); })) { el.style.setProperty(prop, v); }
+			});
+		});
+		var rb = bar.querySelector('[data-v=nocolor]');
+		if (rb) {
+			rb.addEventListener('click', function () {
+				if (vEditTag(bi, path, function (t) { return vSetStyle(vSetStyle(t, 'color', ''), 'background-color', ''); })) {
+					el.style.removeProperty('color'); el.style.removeProperty('background-color');
+					if (!el.getAttribute('style')) { el.removeAttribute('style'); }
+					toast('رنگ اصلی برگشت', 'ok');
+				}
+			});
+		}
+	}
+
+	/* آیکون SVG داخل پیش‌نمایش: تعویض و رنگ */
+	function vSelectSvg(sv) {
+		var loc = vLocate(sv);
+		if (loc.err !== undefined) { if (loc.err) { toast(loc.err); } return; }
+		var code = codeOf(blocks[loc.bi]), node = vMap(code, loc.path);
+		if (!node || node.tag !== 'svg') { toast(MSG_DYN); return; }
+		if (blocks[loc.bi].uid !== activeUid) { select(loc.bi, false); }
+		vSel = { bi: loc.bi, path: loc.path, el: sv, svg: true };
+		sv.setAttribute('data-kv-edit', '');
+		var bar = vBar(sv, '<button data-v="swap">' + ic('shapes') + 'تعویض آیکون</button>' + vColors(false) + '<button data-v="done">' + ic('check') + '</button>');
+		bar.querySelector('[data-v=swap]').addEventListener('click', function () {
+			iReplace = { bi: loc.bi, path: loc.path, el: sv };
+			openIcons();
+		});
+		vBindColors(bar, sv, loc.bi, loc.path);
+		bar.querySelector('[data-v=done]').addEventListener('click', vFinish);
+	}
+	function vReplaceSvg(r, x) {
+		var code = codeOf(blocks[r.bi]), node = vMap(code, r.path);
+		if (!node || node.tag !== 'svg') { toast(MSG_DYN); return; }
+		var tag = code.slice(node.start, node.tagEnd);
+		var keep = { cls: vEscAttr(vAttrOf(tag, 'class')), w: vEscAttr(vAttrOf(tag, 'width')), h: vEscAttr(vAttrOf(tag, 'height')), style: vEscAttr(vAttrOf(tag, 'style')) };
+		if (!keep.w && !keep.h) { var bb = r.el.getBoundingClientRect(); keep.w = keep.h = String(Math.round(bb.width) || iSize); }
+		var svg = iconSvg(x, iSize, keep);
+		vApply(r.bi, node.start, node.end, svg);
+		var t = r.el.ownerDocument.createElement('template');
+		t.innerHTML = svg;
+		var nw = t.content.firstElementChild;
+		if (vSel && vSel.el === r.el) { vSel = null; vHideBar(); }
+		r.el.replaceWith(nw);
+		toast('آیکون عوض شد', 'ok');
+	}
+
 	function vDelAttr(tag, name) { return tag.replace(new RegExp('\\s' + name + '\\s*=\\s*("[^"]*"|\'[^\']*\'|[^\\s>]+)', 'i'), ''); }
 	function vAttrOf(tag, name) {
 		var el = new DOMParser().parseFromString('<body>' + tag + '</body>', 'text/html').body.firstElementChild;
@@ -2442,8 +2587,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		var a = el.closest('a'), aLoc = a ? vLocate(a) : null;
 		var html = '<span class="lb">' + ic('pen') + 'ویرایش متن</span>';
 		if (aLoc && aLoc.path) { html += '<input data-v="href" placeholder="آدرس لینک" value="' + vEscAttr(a.getAttribute('href') || '') + '">'; }
-		html += '<button data-v="done">' + ic('check') + 'تمام</button>';
+		html += vColors(true) + '<button data-v="done">' + ic('check') + 'تمام</button>';
 		var bar2 = vBar(el, html);
+		vBindColors(bar2, el, loc.bi, loc.path);
 		var hin = bar2.querySelector('[data-v=href]');
 		if (hin) {
 			hin.addEventListener('change', function () {
@@ -2468,7 +2614,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	/* رویدادهای داخل پیش‌نمایش */
 	function vOnOver(e) {
 		if (vSel && vSel.el.contains(e.target)) { return; }
-		var t = vTarget(e.target);
+		var sv = e.target.closest && e.target.closest('svg'), t = (sv && !sv.closest('#kashi-vbar')) ? sv : vTarget(e.target);
 		if (vHover && vHover !== t) { vHover.removeAttribute('data-kv-hover'); }
 		vHover = t && t.closest('[data-kashi-block]') ? t : null;
 		if (vHover) { vHover.setAttribute('data-kv-hover', ''); }
@@ -2480,6 +2626,8 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		e.preventDefault(); e.stopPropagation();
 		if (inEdit) { return; }
 		vFinish();
+		var sv = e.target.closest && e.target.closest('svg');
+		if (sv && sv.closest('[data-kashi-block]')) { vSelectSvg(sv); return; }
 		var t = vTarget(e.target);
 		if (t && t.closest('[data-kashi-block]')) { vSelect(t, e); }
 	}
@@ -2522,7 +2670,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			'#kashi-vbar button{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:0;border-radius:7px;background:#6b5af2;color:#fff;font:inherit;cursor:pointer}' +
 			'#kashi-vbar button:hover{background:#6b5af2}' +
 			'#kashi-vbar input{height:28px;width:220px;padding:0 8px;border:1px solid #2e3442;border-radius:7px;background:#0d0f14;color:#e6e8ee;font:inherit;direction:ltr}' +
-			'#kashi-vbar .ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}';
+			'#kashi-vbar .ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}' +
+			'#kashi-vbar .cl{position:relative;display:inline-flex;align-items:center;height:28px;padding:0 8px;border:1px solid #2e3442;border-radius:7px;cursor:pointer;color:#e6e8ee}' +
+			'#kashi-vbar .cl span{display:inline-flex;align-items:center;gap:4px;pointer-events:none}' +
+			'#kashi-vbar .cl input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}' +
+			'#kashi-vbar button.ghost{background:transparent;border:1px solid #2e3442;padding:0 8px}#kashi-vbar button.ghost:hover{background:#20252f}' +
+			'[data-kashi-block] svg[data-kv-hover]{cursor:pointer}';
 		d.head.appendChild(st);
 		// آیکون‌ها برای نوار داخل پیش‌نمایش
 		var sp = document.querySelector('svg[style*="display:none"]');
