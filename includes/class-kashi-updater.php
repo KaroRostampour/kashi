@@ -26,6 +26,7 @@ final class Kashi_Updater {
 	const CACHE_TTL   = 6 * HOUR_IN_SECONDS;
 	const FAIL_TTL    = 2 * HOUR_IN_SECONDS;      // در قطعی اینترنت، هر بار پیشخوان معطل نشود
 	const TIMEOUT     = 5;
+	const GH_REPO     = 'KaroRostampour/kashi';
 
 	/** @var string plugin_basename فایل اصلی، مثل kashi/kashi.php */
 	private static $basename = '';
@@ -67,6 +68,9 @@ final class Kashi_Updater {
 		$s = wp_parse_args(
 			is_array( $s ) ? $s : array(),
 			array(
+				'source'        => 'github', // github | server
+				'gh_repo'       => self::GH_REPO,
+				'gh_token'      => '',
 				'url'           => '',
 				'key'           => '',
 				'server'        => false,
@@ -86,6 +90,11 @@ final class Kashi_Updater {
 		if ( defined( 'KASHI_UPDATE_PUBKEY' ) && KASHI_UPDATE_PUBKEY ) {
 			$s['pubkey'] = (string) KASHI_UPDATE_PUBKEY;
 		}
+		if ( defined( 'KASHI_GITHUB_TOKEN' ) && KASHI_GITHUB_TOKEN ) {
+			$s['gh_token'] = (string) KASHI_GITHUB_TOKEN;
+		}
+		$s['source']  = 'server' === $s['source'] ? 'server' : 'github';
+		$s['gh_repo'] = preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', (string) $s['gh_repo'] ) ? $s['gh_repo'] : self::GH_REPO;
 		return $s;
 	}
 
@@ -202,6 +211,9 @@ final class Kashi_Updater {
 	 */
 	public static function manifest( $force = false ) {
 		$s = self::settings();
+		if ( 'github' === $s['source'] ) {
+			return self::manifest_github( $force, $s );
+		}
 		if ( '' === $s['url'] || ! self::is_safe_url( $s['url'] ) ) {
 			return null;
 		}
@@ -270,6 +282,158 @@ final class Kashi_Updater {
 				: 'افزونه به‌روز است (آخرین نسخه: ' . $m['version'] . ').'
 		);
 		return $m;
+	}
+
+	/* ================================================================== *
+	 * گیت‌هاب: آخرین Release مخزن، با فایل kashi*.zip ضمیمه‌شده
+	 * ================================================================== */
+	private static function gh_headers( $s, $accept = 'application/vnd.github+json' ) {
+		$h = array(
+			'Accept'               => $accept,
+			'User-Agent'           => 'Kashi-Updater',
+			'X-GitHub-Api-Version' => '2022-11-28',
+		);
+		if ( '' !== trim( (string) $s['gh_token'] ) ) {
+			$h['Authorization'] = 'Bearer ' . trim( (string) $s['gh_token'] );
+		}
+		return $h;
+	}
+
+	private static function manifest_github( $force, $s ) {
+		if ( ! $force ) {
+			$cached = get_site_transient( self::CACHE );
+			if ( is_array( $cached ) ) {
+				return isset( $cached['version'] ) ? $cached : null;
+			}
+		}
+		$res = wp_safe_remote_get(
+			'https://api.github.com/repos/' . $s['gh_repo'] . '/releases/latest',
+			array(
+				'timeout' => (int) apply_filters( 'kashi_update_timeout', 8 ),
+				'headers' => self::gh_headers( $s ),
+			)
+		);
+		if ( is_wp_error( $res ) ) {
+			self::fail( 'اتصال به گیت‌هاب ممکن نشد: ' . $res->get_error_message() );
+			return null;
+		}
+		$code = (int) wp_remote_retrieve_response_code( $res );
+		if ( 404 === $code ) {
+			self::fail( '' === trim( (string) $s['gh_token'] ) ? 'مخزن پیدا نشد یا خصوصی است؛ «توکن گیت‌هاب» را وارد کنید.' : 'هنوز هیچ نسخه‌ای (Release) در گیت‌هاب منتشر نشده، یا توکن به این مخزن دسترسی ندارد.' );
+			return null;
+		}
+		if ( 401 === $code || 403 === $code ) {
+			self::fail( 401 === $code ? 'توکن گیت‌هاب نامعتبر یا منقضی شده است.' : 'گیت‌هاب درخواست را رد کرد (محدودیت تعداد درخواست یا دسترسی توکن). کمی بعد دوباره امتحان کنید.' );
+			return null;
+		}
+		if ( 200 !== $code ) {
+			self::fail( 'پاسخ نامعتبر از گیت‌هاب (کد ' . $code . ').' );
+			return null;
+		}
+		$d = json_decode( wp_remote_retrieve_body( $res ), true );
+		if ( ! is_array( $d ) || empty( $d['tag_name'] ) ) {
+			self::fail( 'اطلاعات نسخه در گیت‌هاب نامعتبر است.' );
+			return null;
+		}
+		$asset = null;
+		foreach ( isset( $d['assets'] ) && is_array( $d['assets'] ) ? $d['assets'] : array() as $a ) {
+			if ( isset( $a['name'], $a['url'] ) && preg_match( '#^kashi[^/]*\.zip$#i', $a['name'] ) ) {
+				$asset = $a;
+				break;
+			}
+		}
+		if ( ! $asset ) {
+			self::fail( 'در آخرین نسخه گیت‌هاب (' . $d['tag_name'] . ') فایل kashi.zip ضمیمه نشده است.' );
+			return null;
+		}
+		$sha = '';
+		if ( isset( $asset['digest'] ) && preg_match( '#^sha256:([a-f0-9]{64})$#i', (string) $asset['digest'], $mm ) ) {
+			$sha = strtolower( $mm[1] );
+		}
+		$m = array(
+			'source'       => 'github',
+			'version'      => sanitize_text_field( ltrim( (string) $d['tag_name'], 'vV' ) ),
+			'package'      => esc_url_raw( $asset['url'] ), // آدرس API فایل؛ با توکن دانلود می‌شود
+			'sha256'       => $sha,
+			'requires'     => '',
+			'requires_php' => '',
+			'tested'       => '',
+			'changelog'    => isset( $d['body'] ) ? wp_kses_post( (string) $d['body'] ) : '',
+			'last_updated' => isset( $d['published_at'] ) ? sanitize_text_field( (string) $d['published_at'] ) : '',
+			'homepage'     => isset( $d['html_url'] ) ? esc_url_raw( $d['html_url'] ) : '',
+			'signature'    => '',
+		);
+		set_site_transient( self::CACHE, $m, self::CACHE_TTL );
+		self::set_status(
+			version_compare( $m['version'], self::$version, '>' )
+				? 'نسخه جدید ' . $m['version'] . ' در گیت‌هاب موجود است.'
+				: 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' . $m['version'] . ').'
+		);
+		return $m;
+	}
+
+	/** دانلود فایل Release گیت‌هاب (خصوصی یا عمومی) و بررسی آن */
+	private static function github_download( $m ) {
+		$s   = self::settings();
+		$tmp = wp_tempnam( 'kashi-github.zip' );
+		if ( ! $tmp ) {
+			return new WP_Error( 'kashi_tmp', 'فایل موقت ساخته نشد.' );
+		}
+		// قدم ۱: آدرس API فایل با توکن؛ گیت‌هاب به آدرس موقت دانلود هدایت می‌کند
+		$r = wp_safe_remote_get(
+			$m['package'],
+			array(
+				'timeout'     => 300,
+				'redirection' => 0,
+				'stream'      => true,
+				'filename'    => $tmp,
+				'headers'     => self::gh_headers( $s, 'application/octet-stream' ),
+			)
+		);
+		if ( is_wp_error( $r ) ) {
+			wp_delete_file( $tmp );
+			return $r;
+		}
+		$code = (int) wp_remote_retrieve_response_code( $r );
+		if ( in_array( $code, array( 301, 302, 303, 307, 308 ), true ) ) {
+			$loc = (string) wp_remote_retrieve_header( $r, 'location' );
+			if ( 'https' !== wp_parse_url( $loc, PHP_URL_SCHEME ) ) {
+				wp_delete_file( $tmp );
+				return new WP_Error( 'kashi_gh_redirect', 'آدرس دانلود گیت‌هاب نامعتبر است.' );
+			}
+			// قدم ۲: آدرس موقت (امضاشده توسط گیت‌هاب) بدون توکن
+			$r    = wp_safe_remote_get(
+				$loc,
+				array(
+					'timeout'  => 300,
+					'stream'   => true,
+					'filename' => $tmp,
+				)
+			);
+			if ( is_wp_error( $r ) ) {
+				wp_delete_file( $tmp );
+				return $r;
+			}
+			$code = (int) wp_remote_retrieve_response_code( $r );
+		}
+		if ( 200 !== $code ) {
+			wp_delete_file( $tmp );
+			return new WP_Error( 'kashi_gh_download', 'دانلود از گیت‌هاب انجام نشد (کد ' . $code . ').' );
+		}
+		if ( '' !== $m['sha256'] && ! hash_equals( $m['sha256'], strtolower( (string) hash_file( 'sha256', $tmp ) ) ) ) {
+			wp_delete_file( $tmp );
+			return new WP_Error( 'kashi_checksum', 'فایل دانلودشده با فایل گیت‌هاب یکی نیست (SHA-256)؛ نصب متوقف شد.' );
+		}
+		$info = self::read_zip( $tmp );
+		if ( $info['folder'] !== dirname( self::$basename ) || '' === $info['version'] ) {
+			wp_delete_file( $tmp );
+			return new WP_Error( 'kashi_gh_bad', 'فایل گیت‌هاب بسته معتبر کاشی نیست (پوشه داخل zip باید ' . dirname( self::$basename ) . '/ باشد).' );
+		}
+		if ( version_compare( $info['version'], $m['version'], '!=' ) ) {
+			wp_delete_file( $tmp );
+			return new WP_Error( 'kashi_gh_version', 'نسخه داخل فایل (' . $info['version'] . ') با نسخه Release (' . $m['version'] . ') یکی نیست.' );
+		}
+		return $tmp;
 	}
 
 	private static function fail( $msg ) {
@@ -389,6 +553,12 @@ final class Kashi_Updater {
 		// بستن در حالت شک: بدون امضای معتبرِ همین فایل، نصب نمی‌شود
 		if ( ! is_array( $m ) || empty( $m['sha256'] ) || $package !== ( isset( $m['package'] ) ? $m['package'] : '' ) ) {
 			$m = self::manifest( true );
+		}
+		if ( is_array( $m ) && isset( $m['source'] ) && 'github' === $m['source'] ) {
+			if ( $package !== $m['package'] ) {
+				return new WP_Error( 'kashi_package_mismatch', 'فایل این آپدیت با نسخه گیت‌هاب یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
+			}
+			return self::github_download( $m );
 		}
 		if ( ! $m || empty( $m['sha256'] ) ) {
 			return new WP_Error( 'kashi_no_checksum', 'امضای نسخه جدید دریافت نشد؛ برای امنیت نصب متوقف شد. «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
@@ -687,6 +857,9 @@ final class Kashi_Updater {
 		$new = array_merge(
 			$old,
 			array(
+				'source'     => ( isset( $_POST['kashi_source'] ) && 'server' === $_POST['kashi_source'] ) ? 'server' : 'github',
+				'gh_repo'    => isset( $_POST['kashi_gh_repo'] ) ? sanitize_text_field( wp_unslash( $_POST['kashi_gh_repo'] ) ) : self::GH_REPO,
+				'gh_token'   => isset( $_POST['kashi_gh_token'] ) ? preg_replace( '#[^A-Za-z0-9_]#', '', wp_unslash( $_POST['kashi_gh_token'] ) ) : '',
 				'url'        => isset( $_POST['kashi_url'] ) ? esc_url_raw( trim( wp_unslash( $_POST['kashi_url'] ) ) ) : '',
 				'key'        => isset( $_POST['kashi_key'] ) ? sanitize_text_field( wp_unslash( $_POST['kashi_key'] ) ) : '',
 				'server'     => ! empty( $_POST['kashi_server'] ),
@@ -699,7 +872,7 @@ final class Kashi_Updater {
 		if ( class_exists( 'Kashi_Net' ) ) {
 			Kashi_Net::save_from_post();
 		}
-		if ( '' !== $new['url'] ) {
+		if ( 'github' === $new['source'] || '' !== $new['url'] ) {
 			self::manifest( true ); // بلافاصله بررسی شود تا «وضعیت» نتیجه واقعی را نشان دهد
 			delete_site_transient( 'update_plugins' );
 		}
@@ -809,7 +982,7 @@ final class Kashi_Updater {
 				self::notices();
 			}
 			self::$inline = true; // پیام در admin_notices تکرار نشود
-			$self_server  = ! empty( $s['server'] ) && '' !== $s['url'] && false !== strpos( $s['url'], '//' . (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+			$self_server  = 'server' === $s['source'] && ! empty( $s['server'] ) && '' !== $s['url'] && false !== strpos( $s['url'], '//' . (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
 			?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="kashi_save_settings">
@@ -817,19 +990,37 @@ final class Kashi_Updater {
 
 				<div class="kashi-card">
 					<h2>آپدیت خودکار</h2>
-					<p class="desc">آدرس سرور آپدیت را وارد کنید تا نسخه‌های جدید کاشی مثل بقیه افزونه‌ها در «افزونه‌ها» و «به‌روزرسانی‌ها» نمایش داده شوند. فایل هر نسخه قبل از نصب با امضای SHA-256 بررسی می‌شود.</p>
+					<p class="desc">نسخه‌های جدید کاشی مثل بقیه افزونه‌ها در «افزونه‌ها» با دکمه «به‌روزرسانی» نمایش داده می‌شوند.</p>
 					<div class="kashi-row">
+						<label>منبع آپدیت</label>
+						<div>
+							<label style="display:block;margin-bottom:6px"><input type="radio" name="kashi_source" value="github" <?php checked( $s['source'], 'github' ); ?> onchange="kashiSrc()"> <b>گیت‌هاب</b> (پیشنهادی — بدون سرور اضافه)</label>
+							<label style="display:block"><input type="radio" name="kashi_source" value="server" <?php checked( $s['source'], 'server' ); ?> onchange="kashiSrc()"> سرور آپدیت خودم</label>
+						</div>
+					</div>
+					<div class="kashi-row kashi-src-github">
+						<label for="kashi_gh_repo">مخزن گیت‌هاب</label>
+						<div><input type="text" class="ltr" id="kashi_gh_repo" name="kashi_gh_repo" value="<?php echo esc_attr( $s['gh_repo'] ); ?>" style="max-width:320px"></div>
+					</div>
+					<div class="kashi-row kashi-src-github">
+						<label for="kashi_gh_token">توکن گیت‌هاب</label>
+						<div>
+							<input type="password" class="ltr" id="kashi_gh_token" name="kashi_gh_token" value="<?php echo esc_attr( $s['gh_token'] ); ?>" autocomplete="off" <?php disabled( defined( 'KASHI_GITHUB_TOKEN' ) && KASHI_GITHUB_TOKEN ); ?>>
+							<p class="description">برای مخزن خصوصی لازم است. در گیت‌هاب: Settings ← Developer settings ← Fine-grained tokens ← فقط همین مخزن، دسترسی <b>Contents: Read-only</b>. اگر مخزن عمومی باشد خالی بگذارید.</p>
+						</div>
+					</div>
+					<div class="kashi-row kashi-src-server">
 						<label for="kashi_url">آدرس سرور آپدیت</label>
 						<div>
 							<input type="url" class="ltr" id="kashi_url" name="kashi_url" value="<?php echo esc_attr( $s['url'] ); ?>" placeholder="https://your-site.com/wp-json/kashi/v1/update" <?php disabled( defined( 'KASHI_UPDATE_URL' ) && KASHI_UPDATE_URL ); ?>>
 							<p class="description">آدرسی که در «سرور آپدیت» سایت اصلی‌تان نمایش داده می‌شود، یا آدرس یک فایل update.json.</p>
 						</div>
 					</div>
-					<div class="kashi-row">
+					<div class="kashi-row kashi-src-server">
 						<label for="kashi_key">کلید دسترسی</label>
 						<div><input type="text" class="ltr" id="kashi_key" name="kashi_key" value="<?php echo esc_attr( $s['key'] ); ?>" autocomplete="off"><p class="description">اگر روی سرور کلید گذاشته‌اید، همان را اینجا بنویسید.</p></div>
 					</div>
-					<div class="kashi-row">
+					<div class="kashi-row kashi-src-server">
 						<label for="kashi_pubkey">کلید عمومی امضا</label>
 						<div>
 							<input type="text" class="ltr" id="kashi_pubkey" name="kashi_pubkey" value="<?php echo esc_attr( $s['pubkey'] ); ?>" autocomplete="off" <?php disabled( defined( 'KASHI_UPDATE_PUBKEY' ) && KASHI_UPDATE_PUBKEY ); ?>>
@@ -855,7 +1046,7 @@ final class Kashi_Updater {
 								<span class="kashi-pill">هنوز بررسی نشده</span>
 							<?php endif; ?>
 							<?php if ( is_array( $m ) && ! empty( $m['version'] ) ) : ?>
-								<p class="description">نسخه نصب‌شده: <b><?php echo esc_html( self::$version ); ?></b> — نسخه روی سرور: <b><?php echo esc_html( $m['version'] ); ?></b></p>
+								<p class="description">نسخه نصب‌شده: <b><?php echo esc_html( self::$version ); ?></b> — نسخه منتشرشده: <b><?php echo esc_html( $m['version'] ); ?></b></p>
 							<?php endif; ?>
 							<?php if ( $s['last_check'] ) : ?>
 								<p class="description">آخرین بررسی: <?php echo esc_html( human_time_diff( (int) $s['last_check'], time() ) ); ?> پیش</p>
@@ -865,8 +1056,9 @@ final class Kashi_Updater {
 					</div>
 				</div>
 
-				<div class="kashi-card">
-					<h2>سرور آپدیت (فقط روی سایت اصلی)</h2>
+				<details class="kashi-card" <?php echo ! empty( $s['server'] ) ? 'open' : ''; ?>>
+					<summary style="cursor:pointer;font-weight:600;font-size:15px">پیشرفته: سرور آپدیت اختصاصی (فقط اگر گیت‌هاب استفاده نمی‌کنید)</summary>
+					<h2 style="margin-top:14px">سرور آپدیت (فقط روی سایت اصلی)</h2>
 					<p class="desc">این سایت را منبع آپدیت سایت‌های دیگر کنید. هر بار نسخه جدید آماده شد، فقط فایل zip آن را اینجا انتخاب و ذخیره کنید؛ نسخه و امضا خودکار خوانده می‌شوند و همه سایت‌ها آپدیت را می‌بینند.</p>
 					<div class="kashi-row">
 						<label for="kashi_server">فعال</label>
@@ -930,7 +1122,7 @@ final class Kashi_Updater {
 						<label for="kashi_server_key">کلید دسترسی (اختیاری)</label>
 						<div><input type="text" class="ltr" id="kashi_server_key" name="kashi_server_key" value="<?php echo esc_attr( $s['server_key'] ); ?>" autocomplete="off"><p class="description">اگر بگذارید، فقط سایت‌هایی که این کلید را دارند آپدیت را می‌بینند.</p></div>
 					</div>
-				</div>
+				</details>
 
 				<?php
 				if ( class_exists( 'Kashi_Net' ) ) {
@@ -963,6 +1155,12 @@ final class Kashi_Updater {
 				<p><button type="submit" class="button button-primary">بارگذاری و نصب</button></p>
 			</form>
 			<script>
+			function kashiSrc() {
+				var r = document.querySelector('input[name=kashi_source]:checked'), v = r ? r.value : 'github';
+				document.querySelectorAll('.kashi-src-github').forEach(function (e) { e.style.display = v === 'github' ? '' : 'none'; });
+				document.querySelectorAll('.kashi-src-server').forEach(function (e) { e.style.display = v === 'server' ? '' : 'none'; });
+			}
+			kashiSrc();
 			(function () {
 				var b = document.getElementById('kashi_pick'), frame;
 				if (!b) { return; }
