@@ -3,7 +3,7 @@ Contributors: Karorostampoor@gmail.com
 Tags: page builder, code editor, sections, lightweight, seo
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 
 صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید.
@@ -76,6 +76,10 @@ License: GPLv2 or later
 <?php defined( 'ABSPATH' ) || exit;
 
 == تغییرات ==
+
+= 1.3.1 =
+* رفع مشکل آپدیت: وقتی سایت به wordpress.org وصل نمی‌شد (اینترنت ایران یا حالت اینترنت ملی)، نسخه جدید کاشی دیده نمی‌شد. حالا آپدیت مستقل از wordpress.org نمایش داده می‌شود
+* تشخیص خودکار نوع کد: CSS یا JavaScript خام (بدون تگ) خودش سر جای درست می‌رود؛ نوع کد هر کاشی (HTML، CSS، JS، اسکیما، شورت‌کد) بالای ویرایشگر نمایش داده می‌شود و رنگ‌بندی کد هم خودکار عوض می‌شود
 
 = 1.3.0 =
 * حالت اینترنت ملی: رد فوری درخواست‌های خارجی که پیشخوان را در قطعی کند می‌کنند (قابل تنظیم)

@@ -37,6 +37,10 @@ final class Kashi_Updater {
 
 		// کلاینت
 		add_filter( 'update_plugins_' . self::HOST, array( __CLASS__, 'check_update' ), 10, 4 );
+		// وردپرس فیلتر بالا را فقط وقتی صدا می‌زند که به api.wordpress.org وصل شود؛ در ایران
+		// (و در حالت اینترنت ملی) این اتصال قطع است و آپدیت هیچ‌وقت دیده نمی‌شد. پس خودمان
+		// نسخه جدید را مستقیم در فهرست آپدیت‌های وردپرس می‌گذاریم.
+		add_filter( 'site_transient_update_plugins', array( __CLASS__, 'inject_update' ), 20 );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 		add_filter( 'upgrader_pre_download', array( __CLASS__, 'verified_download' ), 10, 4 );
 		add_filter( 'plugin_row_meta', array( __CLASS__, 'row_meta' ), 10, 2 );
@@ -285,6 +289,10 @@ final class Kashi_Updater {
 		if ( ! $m ) {
 			return $update;
 		}
+		return self::update_item( $m );
+	}
+
+	private static function update_item( $m ) {
 		return array(
 			'id'           => 'https://' . self::HOST . '/',
 			'slug'         => self::SLUG,
@@ -298,6 +306,42 @@ final class Kashi_Updater {
 			'requires_php' => $m['requires_php'],
 			'icons'        => array(),
 		);
+	}
+
+	/**
+	 * نسخه جدید را مستقیم در فهرست آپدیت‌های وردپرس قرار می‌دهد، مستقل از اتصال به wordpress.org.
+	 * فقط در پیشخوان / کرون / WP-CLI؛ در صفحه‌های عمومی سایت هیچ درخواستی ارسال نمی‌شود.
+	 */
+	public static function inject_update( $t ) {
+		if ( '' === self::$basename ) {
+			return $t;
+		}
+		$ctx = is_admin() || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) || ( defined( 'WP_CLI' ) && WP_CLI );
+		if ( ! $ctx ) {
+			return $t;
+		}
+		$m = self::manifest();
+		if ( ! $m ) {
+			return $t;
+		}
+		if ( ! is_object( $t ) ) {
+			$t = new stdClass();
+		}
+		if ( ! isset( $t->response ) || ! is_array( $t->response ) ) {
+			$t->response = array();
+		}
+		if ( ! isset( $t->no_update ) || ! is_array( $t->no_update ) ) {
+			$t->no_update = array();
+		}
+		$item = (object) self::update_item( $m );
+		if ( version_compare( $m['version'], self::$version, '>' ) ) {
+			$t->response[ self::$basename ] = $item;
+			unset( $t->no_update[ self::$basename ] );
+		} else {
+			unset( $t->response[ self::$basename ] );
+			$t->no_update[ self::$basename ] = $item;
+		}
+		return $t;
 	}
 
 	/** پنجره «مشاهده جزئیات نسخه» */
@@ -384,7 +428,7 @@ final class Kashi_Updater {
 		self::flush_cache();
 		self::manifest( true );
 		delete_site_transient( 'update_plugins' );
-		wp_update_plugins();
+		wp_update_plugins(); // اگر wordpress.org در دسترس نباشد هم inject_update نسخه را نشان می‌دهد
 		$back = wp_get_referer() ? wp_get_referer() : admin_url( 'plugins.php' );
 		wp_safe_redirect( add_query_arg( 'kashi_checked', '1', $back ) );
 		exit;

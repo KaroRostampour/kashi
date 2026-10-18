@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.3.0
+ * Version:           1.3.1
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.3.0';
+	const VERSION = '1.3.1';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -1327,6 +1327,8 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 #kashi-cur{direction:rtl;display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;color:var(--muted);font-size:12px;background:var(--bg);border-bottom:1px solid var(--line)}
 #kashi-cur .ic{color:var(--accent);width:14px;height:14px}
 #kashi-cur b{color:var(--text);font-weight:600}
+#kashi-cur .kind .kc{display:inline-block;margin:0 2px;padding:0 6px;border-radius:6px;background:var(--accent-soft);color:#e8e6ff;font-weight:600}
+#kashi-cur .kind{margin-right:auto;font-size:11.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:2px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
 #kashi-warn{direction:rtl;display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(240,85,92,.1);border-bottom:1px solid rgba(240,85,92,.25);color:#ffb3b6;font-size:12px;line-height:1.8}
 #kashi-warn .ic{color:var(--err);margin-top:3px}
 #kashi-warn code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px;direction:ltr;display:inline-block}
@@ -1621,10 +1623,41 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		highlight(scrollPreview);
 	}
 
+	var JS_RE = /(^|[\s;{(])(function\b|const\s|let\s|var\s|=>|document\.|window\.|addEventListener\s*\(|console\.|import\s|export\s|new\s+[A-Z]|if\s*\(|for\s*\()/;
+	function codeKind(code) {
+		var t = String(code || '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+		if (!t || /<[a-z!\/]/i.test(t) || /^\[[a-z_-]+/i.test(t)) { return 'html'; }
+		if (JS_RE.test(t)) { return 'js'; }
+		if (/^(@[a-z-]+[^{;]*[{;]|:root\s*\{|[^{}<>]+\{[^{}]*(:[^{}]*)?\})/i.test(t)) { return 'css'; }
+		return 'html';
+	}
+	function kindInfo(code) {
+		var k = codeKind(code), parts = [];
+		function chip(x) { return '<bdi class="kc">' + x + '</bdi>'; }
+		if (k === 'css') { return { mode: 'css', label: 'تشخیص خودکار: ' + chip('CSS') + ' ← در head' }; }
+		if (k === 'js') { return { mode: 'javascript', label: 'تشخیص خودکار: ' + chip('JS') + ' ← انتهای صفحه' }; }
+		var c = String(code || '');
+		if (/<(?!style|script|link)[a-z]/i.test(c.replace(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi, ''))) { parts.push('HTML'); }
+		if (/<style\b/i.test(c)) { parts.push('CSS'); }
+		if (/<script\b(?![^>]*ld\+json)/i.test(c)) { parts.push('JS'); }
+		if (/application\/ld\+json/i.test(c)) { parts.push('اسکیما'); }
+		if (/\[[a-z_-]+[\s\]]/i.test(c)) { parts.push('شورت‌کد'); }
+		return { mode: 'htmlmixed', label: parts.length ? 'تشخیص خودکار: ' + parts.map(chip).join(' ') : '' };
+	}
+	function showKind() {
+		var k = idx(), el = $('kashi-kind');
+		if (k < 0 || !el) { return; }
+		var code = cm ? cm.getValue() : ta.value, info = kindInfo(code);
+		el.innerHTML = info.label;
+		el.style.display = info.label ? '' : 'none';
+		if (cm && cm.getOption('mode') !== info.mode) { cm.setOption('mode', info.mode); }
+	}
+
 	function markActive() {
 		var k = idx();
 		Array.prototype.forEach.call(list.children, function (el, i) { el.classList.toggle('on', i === k); });
-		$('kashi-cur').innerHTML = k >= 0 ? (ic('code') + '<span>در حال ویرایش</span><b>' + esc(blocks[k].name || 'بدون نام') + '</b>') : '';
+		$('kashi-cur').innerHTML = k >= 0 ? (ic('code') + '<span>در حال ویرایش</span><b>' + esc(blocks[k].name || 'بدون نام') + '</b><span id="kashi-kind" class="kind"></span>') : '';
+		showKind();
 		$('kashi-count').textContent = blocks.length;
 		phpWarn();
 	}
@@ -1772,6 +1805,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		markDirty();
 		updateBadges();
 		phpWarn();
+		showKind();
 		if (typeof seoLater === 'function') { seoLater(); }
 		if (auto.checked) { clearTimeout(timer); timer = setTimeout(refresh, 800); }
 	}
@@ -2777,6 +2811,36 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	/* ================================================================== *
 	 * تبدیل کد کامل یک بخش به css / links / html / scripts
 	 * ================================================================== */
+	/**
+	 * تشخیص خودکار نوع کد: اگر کاشی فقط CSS یا فقط JavaScript خام (بدون تگ) باشد،
+	 * خودش داخل <style> یا <script> گذاشته می‌شود تا درست اجرا شود.
+	 * @return string 'html' | 'css' | 'js'
+	 */
+	public static function code_kind( $code ) {
+		$t = trim( preg_replace( '#/\*.*?\*/#s', '', (string) $code ) );
+		if ( '' === $t || preg_match( '#<[a-z!/]#i', $t ) || preg_match( '#^\[[a-z_-]+#i', $t ) ) {
+			return 'html';
+		}
+		$js = '#(^|[\s;{(])(function\b|const\s|let\s|var\s|=>|document\.|window\.|addEventListener\s*\(|console\.|import\s|export\s|new\s+[A-Z]|if\s*\(|for\s*\()#';
+		if ( preg_match( $js, $t ) ) {
+			return 'js';
+		}
+		if ( preg_match( '#^(@[a-z-]+[^{;]*[{;]|:root\s*\{|[^{}<>]+\{[^{}]*(:[^{}]*)?\})#is', $t ) ) {
+			return 'css';
+		}
+		return 'html';
+	}
+
+	private static function wrap_bare( $code ) {
+		switch ( self::code_kind( $code ) ) {
+			case 'css':
+				return '<style>' . $code . '</style>';
+			case 'js':
+				return '<script>' . $code . '</script>';
+		}
+		return $code;
+	}
+
 	private static function compile( $code, $scope, $scope_on, $trusted ) {
 		$css   = '';
 		$links = array();
@@ -2784,6 +2848,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 		// کد PHP از دیتابیس اجرا نمی‌شود؛ حذف می‌شود تا در خروجی سایت هم دیده نشود
 		$code = preg_replace( '#<\?.*?(?:\?>|\z)#s', '', $code );
+		$code = self::wrap_bare( $code );
 
 		if ( preg_match_all( '#<style\b[^>]*>(.*?)</style\s*>#is', $code, $m ) ) {
 			$css  = implode( "\n", $m[1] );
