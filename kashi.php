@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.1.2
+ * Version:           1.2.0
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.1.2';
+	const VERSION = '1.2.0';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -73,6 +73,8 @@ final class Kashi {
 		// ویرایشگر زنده
 		add_action( 'admin_post_kashi_edit', array( __CLASS__, 'editor_page' ) );
 		add_action( 'admin_post_kashi_new', array( __CLASS__, 'new_section' ) );
+		add_action( 'admin_post_kashi_export', array( __CLASS__, 'export_download' ) );
+		add_action( 'admin_post_kashi_import', array( __CLASS__, 'import_upload' ) );
 		add_action( 'wp_ajax_kashi_save', array( __CLASS__, 'ajax_save' ) );
 		add_action( 'wp_ajax_kashi_rev_get', array( __CLASS__, 'ajax_rev_get' ) );
 		add_action( 'wp_ajax_kashi_lib_list', array( __CLASS__, 'ajax_lib_list' ) );
@@ -82,6 +84,7 @@ final class Kashi {
 
 		// فایل‌های PHP اختصاصی (شورت‌کدهای خودتان) از پوشه wp-content/kashi-php
 		self::load_php_snippets();
+		add_action( 'admin_init', array( __CLASS__, 'guard_php_folders' ) );
 
 		// سایت
 		add_shortcode( 'kashi', array( __CLASS__, 'shortcode' ) );
@@ -208,6 +211,31 @@ final class Kashi {
 		foreach ( $files as $file ) {
 			if ( 'index.php' !== basename( $file ) ) {
 				include_once $file;
+			}
+		}
+	}
+
+	/**
+	 * جلوگیری از اجرای مستقیم فایل‌های پوشه PHP از مرورگر (Apache/LiteSpeed).
+	 * فایل‌ها فقط از داخل وردپرس include می‌شوند.
+	 */
+	public static function guard_php_folders() {
+		foreach ( array( 'kashi-php', 'lsec-php' ) as $folder ) {
+			$dir = WP_CONTENT_DIR . '/' . $folder;
+			if ( ! is_dir( $dir ) || ! wp_is_writable( $dir ) ) {
+				continue;
+			}
+			if ( ! file_exists( $dir . '/.htaccess' ) ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+				file_put_contents(
+					$dir . '/.htaccess',
+					"# Kashi: no direct web access — files are loaded by WordPress only\n" .
+					"<IfModule mod_authz_core.c>\n\tRequire all denied\n</IfModule>\n" .
+					"<IfModule !mod_authz_core.c>\n\tOrder deny,allow\n\tDeny from all\n</IfModule>\n"
+				);
+			}
+			if ( ! file_exists( $dir . '/index.php' ) ) {
+				file_put_contents( $dir . '/index.php', "<?php\n// Silence is golden.\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			}
 		}
 	}
@@ -585,6 +613,352 @@ final class Kashi {
 			'kashi-hf',
 			array( __CLASS__, 'hf_admin_page' )
 		);
+		add_submenu_page(
+			'edit.php?post_type=' . self::CPT,
+			'انتقال کاشی (خروجی / ورودی)',
+			'خروجی / ورودی',
+			'edit_pages',
+			'kashi-transfer',
+			array( __CLASS__, 'transfer_page' )
+		);
+	}
+
+	/* ================================================================== *
+	 * انتقال بین سایت‌ها: خروجی و ورودی (فایل JSON)
+	 * ================================================================== */
+
+	const EXPORT_FORMAT = 1;
+
+	/** همه چیزهایی که با کاشی ساخته شده‌اند و کاربر اجازه ویرایششان را دارد */
+	private static function transfer_candidates() {
+		$tiles = get_posts(
+			array(
+				'post_type'      => self::CPT,
+				'post_status'    => array( 'publish', 'draft', 'private' ),
+				'posts_per_page' => 500,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+			)
+		);
+		$pages = get_posts(
+			array(
+				'post_type'      => array_values( array_diff( self::post_types(), array( self::CPT ) ) ),
+				'post_status'    => array( 'publish', 'draft', 'private', 'pending', 'future' ),
+				'posts_per_page' => 500,
+				'meta_key'       => '_lsec_enabled', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'     => '1', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+			)
+		);
+		$can = function ( $p ) {
+			return current_user_can( 'edit_post', $p->ID );
+		};
+		return array(
+			'tiles' => array_values( array_filter( $tiles, $can ) ),
+			'pages' => array_values( array_filter( $pages, $can ) ),
+		);
+	}
+
+	public static function transfer_page() {
+		$c = self::transfer_candidates();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$res = isset( $_GET['kashi_imported'] ) ? get_transient( 'kashi_import_result_' . get_current_user_id() ) : false;
+		?>
+		<div class="wrap kashi-transfer">
+			<style>
+				.kashi-transfer .kt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;max-width:1000px;margin-top:16px}
+				.kashi-transfer .kt-card{background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:22px}
+				.kashi-transfer .kt-card h2{margin:0 0 6px;font-size:16px}
+				.kashi-transfer .kt-card > p{color:#646970;margin:0 0 14px}
+				.kashi-transfer .kt-list{max-height:340px;overflow:auto;border:1px solid #f0f0f1;border-radius:8px;padding:6px 10px;margin-bottom:14px}
+				.kashi-transfer .kt-list h4{margin:10px 0 4px;color:#50575e}
+				.kashi-transfer .kt-list label{display:flex;gap:8px;align-items:center;padding:4px 0}
+				.kashi-transfer .kt-tag{font-size:11px;padding:1px 8px;border-radius:99px;background:#f0f0f1;color:#50575e}
+				.kashi-transfer .kt-warn{background:#fcf9e8;border:1px solid #f0e2a8;border-radius:8px;padding:10px 12px;color:#6b5600;margin:12px 0}
+			</style>
+			<h1>انتقال کاشی بین سایت‌ها</h1>
+			<?php if ( is_array( $res ) ) : ?>
+				<div class="notice notice-<?php echo empty( $res['error'] ) ? 'success' : 'error'; ?> is-dismissible"><p><b>کاشی:</b> <?php echo esc_html( empty( $res['error'] ) ? $res['msg'] : $res['error'] ); ?></p></div>
+			<?php endif; ?>
+			<div class="kt-grid">
+				<div class="kt-card">
+					<h2>خروجی</h2>
+					<p>کاشی‌ها، هدر/فوترها و صفحه‌هایی را که با کاشی ساخته‌اید در یک فایل ذخیره کنید.</p>
+					<?php if ( ! $c['tiles'] && ! $c['pages'] ) : ?>
+						<p>هنوز چیزی با کاشی ساخته نشده است.</p>
+					<?php else : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="kashi_export">
+						<?php wp_nonce_field( 'kashi_export' ); ?>
+						<label style="display:block;margin-bottom:8px"><input type="checkbox" onclick="document.querySelectorAll('.kt-item').forEach(function(x){x.checked=this.checked}.bind(this))" checked> انتخاب همه</label>
+						<div class="kt-list">
+							<?php if ( $c['tiles'] ) : ?><h4>کاشی‌ها و هدر/فوتر</h4><?php endif; ?>
+							<?php
+							foreach ( $c['tiles'] as $t ) :
+								$loc = get_post_meta( $t->ID, '_lsec_location', true );
+								?>
+								<label><input type="checkbox" class="kt-item" name="ids[]" value="<?php echo (int) $t->ID; ?>" checked> <?php echo esc_html( $t->post_title ? $t->post_title : '#' . $t->ID ); ?>
+								<?php if ( $loc ) : ?><span class="kt-tag"><?php echo 'header' === $loc ? 'هدر' : 'فوتر'; ?></span><?php endif; ?></label>
+							<?php endforeach; ?>
+							<?php if ( $c['pages'] ) : ?><h4>صفحه‌ها</h4><?php endif; ?>
+							<?php foreach ( $c['pages'] as $pg ) : ?>
+								<label><input type="checkbox" class="kt-item" name="ids[]" value="<?php echo (int) $pg->ID; ?>" checked> <?php echo esc_html( $pg->post_title ? $pg->post_title : '#' . $pg->ID ); ?> <span class="kt-tag"><?php echo esc_html( get_post_type_object( $pg->post_type ) ? get_post_type_object( $pg->post_type )->labels->singular_name : $pg->post_type ); ?></span></label>
+							<?php endforeach; ?>
+						</div>
+						<?php submit_button( 'دانلود فایل خروجی', 'primary', 'submit', false ); ?>
+					</form>
+					<?php endif; ?>
+				</div>
+				<div class="kt-card">
+					<h2>ورودی</h2>
+					<p>فایل خروجی سایت دیگر را انتخاب کنید. همه موارد به‌صورت <b>جدید</b> ساخته می‌شوند و چیزی در این سایت جایگزین نمی‌شود.</p>
+					<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="kashi_import">
+						<?php wp_nonce_field( 'kashi_import' ); ?>
+						<p><input type="file" name="kashi_file" accept=".json,application/json" required></p>
+						<div class="kt-warn">
+							• صفحه‌ها و هدر/فوترها به‌صورت <b>پیش‌نویس</b> وارد می‌شوند تا قبل از نمایش بررسی کنید.<br>
+							• شرط‌های «فقط این صفحه‌ها» به «کل سایت» برمی‌گردد (شناسه صفحه‌ها در هر سایت فرق دارد).<br>
+							• تصاویر از آدرس سایت قبلی لود می‌شوند؛ در صورت نیاز با «ویرایش مستقیم» عوضشان کنید.<br>
+							• فقط فایل‌هایی را وارد کنید که خودتان ساخته‌اید؛ فایل حاوی کد است.
+							<?php if ( ! current_user_can( 'unfiltered_html' ) ) : ?><br>• حساب شما اجازه اسکریپت ندارد؛ کدها هنگام ورود پاک‌سازی می‌شوند.<?php endif; ?>
+						</div>
+						<?php submit_button( 'ورود فایل', 'primary', 'submit', false ); ?>
+					</form>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/** ساخت فایل خروجی */
+	public static function export_build( $ids ) {
+		$items = array();
+		foreach ( array_unique( array_map( 'absint', (array) $ids ) ) as $id ) {
+			$post = $id ? get_post( $id ) : null;
+			if ( ! $post || ! in_array( $post->post_type, self::post_types(), true ) || ! current_user_can( 'edit_post', $id ) ) {
+				continue;
+			}
+			$is_tile = ( self::CPT === $post->post_type );
+			if ( ! $is_tile && '1' !== get_post_meta( $id, '_lsec_enabled', true ) ) {
+				continue;
+			}
+			$blocks = self::get_blocks( $id );
+			if ( self::post_untrusted( $id ) ) {
+				$blocks = self::sanitize_blocks( $blocks );
+			}
+			$item = array(
+				'kind'      => $is_tile ? 'tile' : 'page',
+				'post_type' => $post->post_type,
+				'id'        => (int) $id,
+				'title'     => $post->post_title,
+				'blocks'    => array_map(
+					function ( $b ) {
+						return array(
+							'uid'  => $b['uid'],
+							'name' => $b['name'],
+							'code' => $b['code'],
+							'full' => (bool) $b['full'],
+						);
+					},
+					$blocks
+				),
+				'scope'     => self::scope_on( $id ),
+			);
+			if ( $is_tile ) {
+				$item['hf'] = self::hf_meta( $id );
+			} else {
+				$item['layout'] = self::saved_layout( $id );
+				$item['boxw']   = self::saved_box_width( $id );
+			}
+			$items[] = $item;
+		}
+		// کاشی‌ها اول، تا صفحه‌هایی که به آن‌ها لینک دارند بعداً درست وصل شوند
+		usort(
+			$items,
+			function ( $a, $b ) {
+				return ( 'tile' === $a['kind'] ? 0 : 1 ) - ( 'tile' === $b['kind'] ? 0 : 1 );
+			}
+		);
+		return array(
+			'kashi_export' => self::EXPORT_FORMAT,
+			'version'      => self::VERSION,
+			'site'         => home_url( '/' ),
+			'date'         => gmdate( 'c' ),
+			'items'        => $items,
+		);
+	}
+
+	public static function export_download() {
+		check_admin_referer( 'kashi_export' );
+		if ( ! current_user_can( 'edit_pages' ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		$ids  = isset( $_POST['ids'] ) ? (array) wp_unslash( $_POST['ids'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- absint در export_build
+		$data = self::export_build( $ids );
+		if ( ! $data['items'] ) {
+			wp_safe_redirect( admin_url( 'edit.php?post_type=' . self::CPT . '&page=kashi-transfer' ) );
+			exit;
+		}
+		$host = preg_replace( '/[^a-z0-9.-]/i', '', (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="kashi-' . $host . '-' . gmdate( 'Ymd-His' ) . '.json"' );
+		echo wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		exit;
+	}
+
+	/** ذخیره بخش‌ها روی یک پست (مشترک بین ذخیره عادی و ورود فایل) */
+	private static function store_blocks( $id, $blocks, $scope_on, $trusted ) {
+		if ( ! $trusted ) {
+			$blocks = self::sanitize_blocks( $blocks );
+		}
+		$compiled = self::compile_blocks( $blocks, $scope_on, $trusted );
+		update_post_meta( $id, '_lsec_untrusted', $trusted ? '0' : '1' );
+		update_post_meta( $id, '_lsec_blocks', wp_slash( $blocks ) );
+		update_post_meta( $id, '_lsec_scope', $scope_on ? '1' : '0' );
+		update_post_meta( $id, '_lsec_compiled', wp_slash( $compiled ) );
+		return $compiled;
+	}
+
+	/**
+	 * ورود: همه چیز «جدید» ساخته می‌شود. ارجاع‌های [kashi id] به شناسه‌های جدید وصل می‌شوند.
+	 * @return array|WP_Error array( 'tiles' => n, 'pages' => n )
+	 */
+	public static function import_data( $data ) {
+		if ( ! is_array( $data ) || empty( $data['kashi_export'] ) || ! isset( $data['items'] ) || ! is_array( $data['items'] ) ) {
+			return new WP_Error( 'kashi_import_format', 'این فایل، خروجی کاشی نیست.' );
+		}
+		if ( (int) $data['kashi_export'] > self::EXPORT_FORMAT ) {
+			return new WP_Error( 'kashi_import_version', 'این فایل با نسخه جدیدتر کاشی ساخته شده؛ اول کاشی این سایت را به‌روز کنید.' );
+		}
+		if ( count( $data['items'] ) > 500 ) {
+			return new WP_Error( 'kashi_import_size', 'تعداد موارد فایل بیش از حد مجاز (۵۰۰) است.' );
+		}
+		$trusted = current_user_can( 'unfiltered_html' );
+		$publish = current_user_can( 'publish_pages' );
+		$map     = array();
+		$done    = array(
+			'tiles' => 0,
+			'pages' => 0,
+		);
+		$created = array();
+
+		foreach ( array( 'tile', 'page' ) as $pass ) {
+			foreach ( $data['items'] as $it ) {
+				if ( ! is_array( $it ) || ! isset( $it['kind'] ) || $pass !== $it['kind'] ) {
+					continue;
+				}
+				$blocks = self::normalize_blocks( isset( $it['blocks'] ) ? (array) $it['blocks'] : array() );
+				foreach ( $blocks as $k => $b ) {
+					$blocks[ $k ]['code'] = preg_replace_callback(
+						'#\[(kashi|lsec)(\s+id=["\']?)(\d+)(["\']?)#',
+						function ( $m ) use ( &$map ) {
+							return isset( $map[ (int) $m[3] ] ) ? '[kashi' . $m[2] . $map[ (int) $m[3] ] . $m[4] : $m[0];
+						},
+						$b['code']
+					);
+				}
+				$title = isset( $it['title'] ) ? sanitize_text_field( (string) $it['title'] ) : '';
+				$scope = ! empty( $it['scope'] );
+
+				if ( 'tile' === $pass ) {
+					$hf     = isset( $it['hf'] ) && is_array( $it['hf'] ) ? $it['hf'] : array();
+					$loc    = isset( $hf['location'] ) && in_array( $hf['location'], array( 'header', 'footer' ), true ) ? $hf['location'] : '';
+					$status = ( $loc || ! $publish ) ? 'draft' : 'publish'; // هدر/فوتر وارد شده سایت را ناگهان عوض نکند
+					$type   = self::CPT;
+					if ( ! current_user_can( 'edit_pages' ) ) {
+						continue;
+					}
+				} else {
+					$type = ( isset( $it['post_type'] ) && 'post' === $it['post_type'] ) ? 'post' : 'page';
+					$pto  = get_post_type_object( $type );
+					if ( ! $pto || ! current_user_can( $pto->cap->edit_posts ) ) {
+						continue;
+					}
+					$status = 'draft';
+				}
+
+				$new_id = wp_insert_post(
+					wp_slash(
+						array(
+							'post_type'   => $type,
+							'post_status' => $status,
+							'post_title'  => '' !== $title ? $title : 'کاشی وارد شده',
+						)
+					),
+					true
+				);
+				if ( is_wp_error( $new_id ) || ! $new_id ) {
+					continue;
+				}
+				$compiled = self::store_blocks( $new_id, $blocks, $scope, $trusted );
+
+				if ( 'tile' === $pass ) {
+					if ( isset( $it['id'] ) ) {
+						$map[ (int) $it['id'] ] = (int) $new_id;
+					}
+					if ( $loc ) {
+						$mode = isset( $hf['mode'] ) && in_array( $hf['mode'], array( 'all', 'front' ), true ) ? $hf['mode'] : 'all';
+						update_post_meta( $new_id, '_lsec_location', $loc );
+						update_post_meta( $new_id, '_lsec_cond', array( 'mode' => $mode, 'ids' => array() ) );
+						update_post_meta( $new_id, '_lsec_target', self::sanitize_target( isset( $hf['target'] ) ? $hf['target'] : '' ) );
+					}
+					$done['tiles']++;
+				} else {
+					update_post_meta( $new_id, '_lsec_enabled', '1' );
+					update_post_meta( $new_id, '_lsec_layout', self::sanitize_layout( isset( $it['layout'] ) ? sanitize_key( $it['layout'] ) : 'full' ) );
+					$w = isset( $it['boxw'] ) ? absint( $it['boxw'] ) : 1200;
+					update_post_meta( $new_id, '_lsec_boxw', $w ? min( max( $w, 320 ), 3000 ) : 1200 );
+					wp_update_post(
+						wp_slash(
+							array(
+								'ID'           => $new_id,
+								'post_content' => self::seo_html( $compiled ),
+							)
+						)
+					);
+					$done['pages']++;
+				}
+				self::push_rev( $new_id, self::snapshot( $new_id ), null, 'ورود از فایل', $trusted );
+				$created[] = (int) $new_id;
+			}
+		}
+		self::hf_rebuild_index();
+		$done['ids'] = $created;
+		return $done;
+	}
+
+	public static function import_upload() {
+		check_admin_referer( 'kashi_import' );
+		if ( ! current_user_can( 'edit_pages' ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		$back = admin_url( 'edit.php?post_type=' . self::CPT . '&page=kashi-transfer&kashi_imported=1' );
+		$key  = 'kashi_import_result_' . get_current_user_id();
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput
+		$f = isset( $_FILES['kashi_file'] ) ? $_FILES['kashi_file'] : null;
+		if ( ! $f || ! empty( $f['error'] ) || empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) {
+			set_transient( $key, array( 'error' => 'فایلی دریافت نشد.' ), 300 );
+			wp_safe_redirect( $back );
+			exit;
+		}
+		if ( (int) $f['size'] > 20 * MB_IN_BYTES ) {
+			set_transient( $key, array( 'error' => 'حجم فایل بیش از ۲۰ مگابایت است.' ), 300 );
+			wp_safe_redirect( $back );
+			exit;
+		}
+		$json = file_get_contents( $f['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		// phpcs:enable
+		$res = self::import_data( json_decode( (string) $json, true ) );
+		if ( is_wp_error( $res ) ) {
+			set_transient( $key, array( 'error' => $res->get_error_message() ), 300 );
+		} else {
+			set_transient( $key, array( 'msg' => sprintf( '%d کاشی و %d صفحه وارد شد. صفحه‌ها و هدر/فوترها پیش‌نویس هستند؛ بعد از بررسی منتشرشان کنید.', $res['tiles'], $res['pages'] ) ), 300 );
+		}
+		wp_safe_redirect( $back );
+		exit;
 	}
 
 	/** آدرس ساخت کاشی جدید (اختیاری: مستقیم به‌عنوان هدر یا فوتر) */

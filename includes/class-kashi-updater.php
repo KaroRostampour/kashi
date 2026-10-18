@@ -48,6 +48,7 @@ final class Kashi_Updater {
 		// تنظیمات
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 20 );
 		add_action( 'admin_post_kashi_save_settings', array( __CLASS__, 'save_settings' ) );
+		add_action( 'admin_post_kashi_gen_keys', array( __CLASS__, 'generate_keys' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'notices' ) );
 	}
 
@@ -63,6 +64,8 @@ final class Kashi_Updater {
 				'key'           => '',
 				'server'        => false,
 				'server_key'    => '',
+				'pubkey'        => '',   // کلاینت: کلید عمومی امضا (پین‌شده)
+				'sign_pub'      => '',   // سرور: کلید عمومی جفت‌کلید این سرور
 				'last_check'    => 0,
 				'last_status'   => '',
 			)
@@ -73,6 +76,9 @@ final class Kashi_Updater {
 		if ( defined( 'KASHI_UPDATE_KEY' ) && KASHI_UPDATE_KEY ) {
 			$s['key'] = (string) KASHI_UPDATE_KEY;
 		}
+		if ( defined( 'KASHI_UPDATE_PUBKEY' ) && KASHI_UPDATE_PUBKEY ) {
+			$s['pubkey'] = (string) KASHI_UPDATE_PUBKEY;
+		}
 		return $s;
 	}
 
@@ -82,6 +88,88 @@ final class Kashi_Updater {
 		$s['last_check']  = time();
 		$s['last_status'] = $status;
 		update_option( self::OPT, $s, false );
+	}
+
+	/* ================================================================== *
+	 * امضای دیجیتال (Ed25519)
+	 * پیام امضاشده: «kashi|نسخه|sha256 فایل». کلید خصوصی هیچ‌جا ذخیره نمی‌شود؛
+	 * کلاینت‌ها فقط کلید عمومی پین‌شده را دارند. پس حتی با هک کامل سایت سرور،
+	 * بدون کلید خصوصی نمی‌توان نسخه مخرب منتشر کرد.
+	 * ================================================================== */
+	private static function sign_message( $version, $sha ) {
+		return 'kashi|' . trim( (string) $version ) . '|' . strtolower( trim( (string) $sha ) );
+	}
+
+	private static function b64( $s ) {
+		$d = base64_decode( trim( (string) $s ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		return false === $d ? '' : $d;
+	}
+
+	/** کلید عمومی معتبر (۳۲ بایت) یا رشته خالی */
+	public static function pinned_key() {
+		$s  = self::settings();
+		$pk = self::b64( $s['pubkey'] );
+		return 32 === strlen( $pk ) ? $pk : '';
+	}
+
+	/** امضای یک manifest با کلید پین‌شده؛ اگر کلیدی پین نشده، true */
+	private static function signature_ok( $m ) {
+		$pk = self::pinned_key();
+		if ( '' === $pk ) {
+			return true;
+		}
+		$sig = self::b64( isset( $m['signature'] ) ? $m['signature'] : '' );
+		if ( 64 !== strlen( $sig ) || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
+			return false;
+		}
+		try {
+			return sodium_crypto_sign_verify_detached( $sig, self::sign_message( $m['version'], $m['sha256'] ), $pk );
+		} catch ( Exception $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * جفت‌کلید جدید: کلید عمومی ذخیره می‌شود، کلید خصوصی فقط برگردانده می‌شود (ذخیره نمی‌شود).
+	 * @return array array( public_b64, secret_b64 )
+	 */
+	public static function create_keypair() {
+		$kp  = sodium_crypto_sign_keypair();
+		$sk  = base64_encode( sodium_crypto_sign_secretkey( $kp ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		$pk  = base64_encode( sodium_crypto_sign_publickey( $kp ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		$opt = get_option( self::OPT, array() );
+		$opt = is_array( $opt ) ? $opt : array();
+		$opt['sign_pub'] = $pk;
+		update_option( self::OPT, $opt, false );
+		$rel = get_option( self::OPT_RELEASE, array() );
+		if ( is_array( $rel ) ) {
+			unset( $rel['signature'], $rel['signed_for'] ); // امضاهای قبلی با کلید جدید نمی‌خوانند
+			update_option( self::OPT_RELEASE, $rel, false );
+		}
+		return array( $pk, $sk );
+	}
+
+	/** سرور: ساخت جفت‌کلید؛ کلید خصوصی فقط یک بار دانلود می‌شود */
+	public static function generate_keys() {
+		check_admin_referer( 'kashi_gen_keys' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		if ( ! function_exists( 'sodium_crypto_sign_keypair' ) ) {
+			wp_die( 'این سرور از امضای دیجیتال (sodium) پشتیبانی نمی‌کند.' );
+		}
+		list( $pk, $sk ) = self::create_keypair();
+		nocache_headers();
+		header( 'Content-Type: text/plain; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="kashi-signing-key-' . gmdate( 'Ymd' ) . '.txt"' );
+		echo "KASHI SIGNING KEY — کلید خصوصی امضای آپدیت کاشی\n";
+		echo "==================================================\n\n";
+		echo "کلید خصوصی (محرمانه — به هیچ‌کس ندهید، در سایت ذخیره نکنید):\n" . $sk . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo "کلید عمومی (این را در «کلید عمومی امضا» همه سایت‌ها بگذارید):\n" . $pk . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo "هر بار که نسخه جدیدی منتشر می‌کنید، کلید خصوصی را در فیلد «کلید خصوصی امضا» بچسبانید.\n";
+		echo "این فایل را در جای امن (مثلاً مدیر رمز عبور) نگه دارید. اگر گم شود، کلید جدید بسازید\n";
+		echo "و کلید عمومی جدید را در همه سایت‌ها عوض کنید.\n";
+		exit;
 	}
 
 	/** آدرس manifest این سایت وقتی سرور آپدیت است */
@@ -162,7 +250,12 @@ final class Kashi_Updater {
 			'changelog'    => isset( $data['changelog'] ) ? wp_kses_post( $data['changelog'] ) : '',
 			'last_updated' => isset( $data['last_updated'] ) ? sanitize_text_field( $data['last_updated'] ) : '',
 			'homepage'     => isset( $data['homepage'] ) ? esc_url_raw( $data['homepage'] ) : '',
+			'signature'    => isset( $data['signature'] ) ? preg_replace( '#[^A-Za-z0-9+/=]#', '', (string) $data['signature'] ) : '',
 		);
+		if ( ! self::signature_ok( $m ) ) {
+			self::fail( 'امضای دیجیتال نسخه ' . $m['version'] . ' معتبر نیست یا وجود ندارد؛ برای امنیت نمایش و نصب نمی‌شود.' );
+			return null;
+		}
 		set_site_transient( self::CACHE, $m, self::CACHE_TTL );
 		self::set_status(
 			version_compare( $m['version'], self::$version, '>' )
@@ -253,6 +346,9 @@ final class Kashi_Updater {
 		if ( ! $m || empty( $m['sha256'] ) ) {
 			return new WP_Error( 'kashi_no_checksum', 'امضای نسخه جدید دریافت نشد؛ برای امنیت نصب متوقف شد. «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
 		}
+		if ( ! self::signature_ok( $m ) ) {
+			return new WP_Error( 'kashi_signature', 'امضای دیجیتال این نسخه معتبر نیست؛ نصب متوقف شد.' );
+		}
 		if ( $package !== $m['package'] ) {
 			return new WP_Error( 'kashi_package_mismatch', 'فایل این آپدیت با نسخه اعلام‌شده سرور یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
 		}
@@ -331,6 +427,7 @@ final class Kashi_Updater {
 				'tested'       => $r['tested'],
 				'changelog'    => $r['changelog'],
 				'last_updated' => $r['last_updated'],
+				'signature'    => ( ! empty( $r['signature'] ) && isset( $r['signed_for'] ) && self::sign_message( $r['version'], $r['sha256'] ) === $r['signed_for'] ) ? $r['signature'] : '',
 				'homepage'     => home_url( '/' ),
 			)
 		);
@@ -399,11 +496,16 @@ final class Kashi_Updater {
 			echo '<div class="notice notice-info is-dismissible"><p><b>کاشی:</b> ' . esc_html( $s['last_status'] ? $s['last_status'] : 'بررسی انجام شد.' ) . '</p></div>';
 		}
 		if ( isset( $_GET['kashi_saved'] ) ) {
-			$msg = 'تنظیمات ذخیره شد.';
-			if ( 'noversion' === $_GET['kashi_saved'] ) {
-				$msg = 'نسخه از داخل فایل zip خوانده نشد؛ شماره نسخه را دستی وارد کنید.';
-			}
-			echo '<div class="notice notice-' . ( 'noversion' === $_GET['kashi_saved'] ? 'warning' : 'success' ) . ' is-dismissible"><p><b>کاشی:</b> ' . esc_html( $msg ) . '</p></div>';
+			$code = sanitize_key( wp_unslash( $_GET['kashi_saved'] ) );
+			$all  = array(
+				'1'           => array( 'success', 'تنظیمات ذخیره شد.' ),
+				'signed'      => array( 'success', 'نسخه با امضای دیجیتال منتشر شد. کلید خصوصی ذخیره نشد.' ),
+				'noversion'   => array( 'warning', 'نسخه از داخل فایل zip خوانده نشد؛ شماره نسخه را دستی وارد کنید.' ),
+				'badkey'      => array( 'error', 'کلید خصوصی نامعتبر است؛ نسخه امضا نشد.' ),
+				'keymismatch' => array( 'error', 'این کلید خصوصی با کلید عمومی این سرور یکی نیست؛ نسخه امضا نشد.' ),
+			);
+			$n = isset( $all[ $code ] ) ? $all[ $code ] : $all['1'];
+			echo '<div class="notice notice-' . esc_attr( $n[0] ) . ' is-dismissible"><p><b>کاشی:</b> ' . esc_html( $n[1] ) . '</p></div>';
 		}
 		// phpcs:enable
 	}
@@ -423,6 +525,7 @@ final class Kashi_Updater {
 				'key'        => isset( $_POST['kashi_key'] ) ? sanitize_text_field( wp_unslash( $_POST['kashi_key'] ) ) : '',
 				'server'     => ! empty( $_POST['kashi_server'] ),
 				'server_key' => isset( $_POST['kashi_server_key'] ) ? sanitize_text_field( wp_unslash( $_POST['kashi_server_key'] ) ) : '',
+				'pubkey'     => isset( $_POST['kashi_pubkey'] ) ? preg_replace( '#[^A-Za-z0-9+/=]#', '', wp_unslash( $_POST['kashi_pubkey'] ) ) : '',
 			)
 		);
 		update_option( self::OPT, $new, false );
@@ -463,6 +566,27 @@ final class Kashi_Updater {
 			if ( empty( $rel['version'] ) && ! empty( $rel['package'] ) ) {
 				$flag = 'noversion';
 			}
+			// امضا: کلید خصوصی فقط در همین درخواست استفاده و بلافاصله پاک می‌شود
+			$secret = isset( $_POST['kashi_sign_secret'] ) ? trim( wp_unslash( $_POST['kashi_sign_secret'] ) ) : '';
+			unset( $_POST['kashi_sign_secret'] );
+			if ( '' !== $secret && ! empty( $rel['version'] ) && ! empty( $rel['sha256'] ) ) {
+				$sk = self::b64( $secret );
+				$pk = isset( $new['sign_pub'] ) ? self::b64( $new['sign_pub'] ) : '';
+				if ( 64 !== strlen( $sk ) || ! function_exists( 'sodium_crypto_sign_detached' ) ) {
+					$flag = 'badkey';
+				} elseif ( '' === $pk || ! hash_equals( $pk, sodium_crypto_sign_publickey_from_secretkey( $sk ) ) ) {
+					$flag = 'keymismatch';
+				} else {
+					$msg               = self::sign_message( $rel['version'], $rel['sha256'] );
+					$rel['signature']  = base64_encode( sodium_crypto_sign_detached( $msg, $sk ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+					$rel['signed_for'] = $msg;
+					$flag              = 'signed';
+				}
+				if ( function_exists( 'sodium_memzero' ) ) {
+					sodium_memzero( $sk );
+				}
+			}
+			$secret = '';
 			update_option( self::OPT_RELEASE, $rel, false );
 		}
 		// phpcs:enable
@@ -482,6 +606,8 @@ final class Kashi_Updater {
 				'sha256'     => '',
 				'tested'     => '',
 				'changelog'  => '',
+				'signature'  => '',
+				'signed_for' => '',
 			)
 		);
 		$m   = get_site_transient( self::CACHE );
@@ -521,6 +647,17 @@ final class Kashi_Updater {
 					<div class="kashi-row">
 						<label for="kashi_key">کلید دسترسی</label>
 						<div><input type="text" class="ltr" id="kashi_key" name="kashi_key" value="<?php echo esc_attr( $s['key'] ); ?>" autocomplete="off"><p class="description">اگر روی سرور کلید گذاشته‌اید، همان را اینجا بنویسید.</p></div>
+					</div>
+					<div class="kashi-row">
+						<label for="kashi_pubkey">کلید عمومی امضا</label>
+						<div>
+							<input type="text" class="ltr" id="kashi_pubkey" name="kashi_pubkey" value="<?php echo esc_attr( $s['pubkey'] ); ?>" autocomplete="off" <?php disabled( defined( 'KASHI_UPDATE_PUBKEY' ) && KASHI_UPDATE_PUBKEY ); ?>>
+							<?php if ( '' !== self::pinned_key() ) : ?>
+								<p><span class="kashi-pill ok">امضای دیجیتال فعال: فقط نسخه‌های امضاشده نصب می‌شوند</span></p>
+							<?php else : ?>
+								<p class="description" style="color:#b32d2e">هنوز تنظیم نشده. کلید عمومی را از «سرور آپدیت» سایت اصلی‌تان کپی کنید تا هیچ نسخه امضانشده‌ای نصب نشود (حتی اگر سرور هک شود).</p>
+							<?php endif; ?>
+						</div>
 					</div>
 					<div class="kashi-row">
 						<label>وضعیت</label>
@@ -579,6 +716,24 @@ final class Kashi_Updater {
 					<div class="kashi-row">
 						<label for="kashi_tested">تست‌شده تا وردپرس</label>
 						<div><input type="text" class="ltr" id="kashi_tested" name="kashi_tested" value="<?php echo esc_attr( $r['tested'] ? $r['tested'] : get_bloginfo( 'version' ) ); ?>" style="max-width:120px"></div>
+					</div>
+					<div class="kashi-row">
+						<label>امضای دیجیتال</label>
+						<div>
+							<?php if ( empty( $s['sign_pub'] ) ) : ?>
+								<p class="description">با امضای دیجیتال، سایت‌ها فقط نسخه‌هایی را نصب می‌کنند که با کلید خصوصی شما امضا شده باشند. کلید خصوصی فقط یک بار دانلود می‌شود و هیچ‌جا ذخیره نمی‌شود.</p>
+								<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>">ساخت کلید امضا و دانلود</a>
+							<?php else : ?>
+								<p>کلید عمومی (در همه سایت‌ها، فیلد «کلید عمومی امضا»):</p>
+								<p><code class="copy" title="کلیک برای کپی" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( $s['sign_pub'] ); ?></code></p>
+								<?php
+								$signed = ! empty( $r['signature'] ) && isset( $r['signed_for'] ) && $r['version'] && self::sign_message( $r['version'], $r['sha256'] ) === $r['signed_for'];
+								?>
+								<p><?php echo $signed ? '<span class="kashi-pill ok">نسخه فعلی امضا شده است</span>' : '<span class="kashi-pill" style="background:#fcf0e3;color:#8a4b00">نسخه فعلی امضا ندارد</span>'; ?></p>
+								<p style="margin-top:10px"><input type="password" class="ltr" name="kashi_sign_secret" value="" autocomplete="off" placeholder="کلید خصوصی امضا را اینجا بچسبانید (ذخیره نمی‌شود)" style="width:100%;max-width:520px"></p>
+								<p class="description">هنگام انتشار هر نسخه جدید، کلید خصوصی را بچسبانید و ذخیره کنید. <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>" onclick="return confirm('با ساخت کلید جدید، باید کلید عمومی را در همه سایت‌ها عوض کنید. ادامه؟');">ساخت کلید جدید</a></p>
+							<?php endif; ?>
+						</div>
 					</div>
 					<div class="kashi-row">
 						<label for="kashi_server_key">کلید دسترسی (اختیاری)</label>
