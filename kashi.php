@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.4.2
+ * Version:           1.5.0
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.4.2';
+	const VERSION = '1.5.0';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -342,7 +342,7 @@ final class Kashi {
 	 * ------------------------------------------------------------------ */
 	private static function print_icon_sprite() {
 		echo '<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">'
-			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-shapes" viewBox="0 0 24 24"><circle cx="7" cy="7" r="4"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><path d="M7 13.5 11 20H3z"/><circle cx="17" cy="17" r="4"/></symbol><symbol id="lsi-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
+			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-shapes" viewBox="0 0 24 24"><circle cx="7" cy="7" r="4"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><path d="M7 13.5 11 20H3z"/><circle cx="17" cy="17" r="4"/></symbol><symbol id="lsi-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="lsi-laptop" viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9H4z"/><path d="M2 19h20l-2-4H4z"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
 			. '</svg>';
 	}
 
@@ -372,6 +372,34 @@ final class Kashi {
 		return array();
 	}
 
+	/** دستگاه‌های نمایش: d=دسکتاپ l=لپ‌تاپ t=تبلت m=موبایل؛ خالی (یا همه) = همه‌جا (ریسپانسیو) */
+	const DEVICES = array(
+		'd' => '(min-width:1440px)',
+		'l' => '(min-width:1025px) and (max-width:1439.98px)',
+		't' => '(min-width:768px) and (max-width:1024.98px)',
+		'm' => '(max-width:767.98px)',
+	);
+
+	private static function norm_dev( $dev ) {
+		$dev = array_values( array_intersect( array_keys( self::DEVICES ), array_map( 'strval', (array) $dev ) ) );
+		return count( $dev ) === count( self::DEVICES ) ? array() : $dev;
+	}
+
+	/** CSS پنهان‌کردن کاشی در دستگاه‌هایی که انتخاب نشده‌اند */
+	private static function device_css( $uid, $dev ) {
+		$dev = self::norm_dev( $dev );
+		if ( ! $dev ) {
+			return '';
+		}
+		$css = '';
+		foreach ( self::DEVICES as $k => $mq ) {
+			if ( ! in_array( $k, $dev, true ) ) {
+				$css .= '@media ' . $mq . '{.kashi-b-' . $uid . '{display:none!important}}';
+			}
+		}
+		return $css;
+	}
+
 	private static function normalize_blocks( $raw ) {
 		$out  = array();
 		$seen = array();
@@ -389,6 +417,7 @@ final class Kashi {
 				'name' => isset( $b['name'] ) ? sanitize_text_field( (string) $b['name'] ) : '',
 				'code' => isset( $b['code'] ) ? (string) $b['code'] : '',
 				'full' => ! empty( $b['full'] ),
+				'dev'  => self::norm_dev( isset( $b['dev'] ) ? $b['dev'] : array() ),
 			);
 		}
 		return $out;
@@ -489,10 +518,15 @@ final class Kashi {
 		foreach ( array_values( $blocks ) as $i => $b ) {
 			$code      = $trusted ? $b['code'] : self::strip_scripts( $b['code'] );
 			$c         = self::compile( $code, '.kashi-b-' . $b['uid'], $scope_on, $trusted );
-			$c['html'] = self::optimize_media( $c['html'], 0 === $i );
+			$dev       = self::norm_dev( isset( $b['dev'] ) ? $b['dev'] : array() );
+			// تصویر LCP فقط برای کاشی اولی که در همه دستگاه‌ها دیده می‌شود؛ کاشی‌های مخصوص یک دستگاه
+			// lazy می‌مانند تا تصویرشان در دستگاه‌های دیگر (که پنهان است) دانلود نشود
+			$c['html'] = self::optimize_media( $c['html'], 0 === $i && ! $dev );
+			$c['css'] .= self::device_css( $b['uid'], $dev );
 			$out[]     = array(
 				'uid'  => $b['uid'],
 				'full' => (bool) $b['full'],
+				'dev'  => $dev,
 				'c'    => $c,
 			);
 		}
@@ -760,6 +794,7 @@ final class Kashi {
 							'name' => $b['name'],
 							'code' => $b['code'],
 							'full' => (bool) $b['full'],
+							'dev'  => isset( $b['dev'] ) ? $b['dev'] : array(),
 						);
 					},
 					$blocks
@@ -1289,7 +1324,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-div::before{content:"";position:absolute;top:0;bottom:0;left:-6px;right:-6px}
 .kashi-div:hover,.kashi-div:focus-visible,.kashi-drag .kashi-div{background:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .kashi-view{flex:1;height:100%;background:#0a0b0f;display:flex;justify-content:center;overflow:auto;padding:0}
-.kashi-view iframe{border:0;background:#fff;width:100%;height:100%;transition:width .25s ease;box-shadow:0 0 0 1px var(--line)}
+.kashi-view{position:relative}
+.kashi-view iframe{border:0;background:#fff;width:100%;height:100%;flex:0 0 auto;transform-origin:top center;box-shadow:0 0 0 1px var(--line)}
+.kashi-view.scaled{overflow:hidden}
+.kashi-view.scaled iframe{position:absolute;top:0;left:0;transform-origin:top left}
+#kashi-zoom{position:absolute;bottom:10px;left:10px;z-index:3;direction:ltr;font-size:11px;color:var(--muted);background:rgba(13,15,20,.85);border:1px solid var(--line);border-radius:99px;padding:2px 9px;pointer-events:none}
 .kashi-drag .kashi-view iframe{pointer-events:none}
 
 /* ---------- لیست بخش‌ها ---------- */
@@ -1314,6 +1353,17 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-item .nm{flex:1;min-width:60px;height:28px;background:transparent;border:1px solid transparent;border-radius:6px;padding:0 6px;color:var(--text)}
 .kashi-item .nm:focus{outline:0;border-color:var(--line2);background:var(--bg)}
 .kashi-item .fw{display:inline-flex;cursor:pointer}
+.kashi-item .dv{display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 6px;border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--dim);cursor:pointer}
+.kashi-item .dv .ic{width:13px;height:13px}
+.kashi-item .dv:hover{color:var(--text)}
+.kashi-item .dv.on{background:var(--accent-soft);border-color:var(--accent-line);color:#fff}
+.kashi-dvpop{position:fixed;z-index:80;width:270px;direction:rtl;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:12px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)}
+.kashi-dvpop>b{display:block;font-size:13px;margin:0 2px 8px}
+.kashi-dvpop .dvr{display:flex;justify-content:space-between;width:100%;height:auto;padding:7px 4px;color:var(--text);white-space:normal}
+.kashi-dvpop .dvl{display:flex;align-items:center;gap:10px}
+.kashi-dvpop .dvl small{display:block;color:var(--muted);font-size:11.5px}
+.kashi-dvpop .dvr i{flex:0 0 28px}
+.kashi-dvpop .hint{margin-top:8px;line-height:1.8}
 .kashi-item .fw input{position:absolute;opacity:0;pointer-events:none}
 .kashi-item .fw span{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 7px;border-radius:6px;font-size:11px;color:var(--dim);border:1px solid var(--line2);transition:all .15s}
 .kashi-item .fw span .ic{width:13px;height:13px}
@@ -1443,9 +1493,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	<span class="kashi-sep"></span>
 	<div class="g">
 		<div class="seg kashi-dev">
-			<button type="button" data-w="100%" class="on" aria-pressed="true" title="دسکتاپ"><?php self::icon( 'monitor' ); ?></button>
-			<button type="button" data-w="768px" aria-pressed="false" title="تبلت"><?php self::icon( 'tablet' ); ?></button>
-			<button type="button" data-w="390px" aria-pressed="false" title="موبایل"><?php self::icon( 'phone' ); ?></button>
+			<button type="button" data-w="1440" class="on" aria-pressed="true" title="دسکتاپ (۱۴۴۰)"><?php self::icon( 'monitor' ); ?></button>
+			<button type="button" data-w="1280" aria-pressed="false" title="لپ‌تاپ (۱۲۸۰)"><?php self::icon( 'laptop' ); ?></button>
+			<button type="button" data-w="768" aria-pressed="false" title="تبلت (۷۶۸)"><?php self::icon( 'tablet' ); ?></button>
+			<button type="button" data-w="390" aria-pressed="false" title="موبایل (۳۹۰)"><?php self::icon( 'phone' ); ?></button>
 		</div>
 		<label class="ib tog" title="پیش‌نمایش زنده: با هر تغییر به‌روز شود"><input type="checkbox" id="kashi-auto" checked aria-label="پیش‌نمایش زنده"><?php self::icon( 'zap' ); ?></label>
 		<button type="button" class="ib" id="kashi-refresh" title="بروزرسانی پیش‌نمایش"><?php self::icon( 'refresh' ); ?></button>
@@ -1544,7 +1595,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		<div class="kashi-code"><textarea id="kashi-code" spellcheck="false"></textarea></div>
 	</div>
 	<div class="kashi-div" id="kashi-div" role="separator" aria-orientation="vertical" aria-label="تغییر اندازه پنل‌ها (کلیدهای چپ و راست)" tabindex="0"></div>
-	<div class="kashi-view"><iframe id="kashi-frame" name="kashi-frame" title="پیش‌نمایش"></iframe></div>
+	<div class="kashi-view"><iframe id="kashi-frame" name="kashi-frame" title="پیش‌نمایش"></iframe><span id="kashi-zoom"></span></div>
 </div>
 <form id="kashi-live" method="post" target="kashi-frame" action="<?php echo esc_url( self::live_url( $post ) ); ?>" style="display:none">
 	<input type="hidden" name="kashi_live_nonce" value="<?php echo esc_attr( wp_create_nonce( 'kashi_live_' . $id ) ); ?>">
@@ -1616,7 +1667,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	/* ---------- بخش‌ها ---------- */
 	function makeBlock(b) {
 		b = b || {};
-		var o = { uid: b.uid || newUid(), name: b.name || ('بخش ' + (blocks.length + 1)), full: !!b.full, code: b.code || '' };
+		var o = { uid: b.uid || newUid(), name: b.name || ('بخش ' + (blocks.length + 1)), full: !!b.full, dev: Array.isArray(b.dev) ? b.dev.slice() : [], code: b.code || '' };
 		if (cm && CM) { o.doc = CM.Doc(o.code, mode); }
 		return o;
 	}
@@ -1630,7 +1681,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function codeOf(b) { return b.doc ? b.doc.getValue() : b.code; }
 	function getBlocks() {
 		syncTa();
-		return blocks.map(function (b) { return { uid: b.uid, name: b.name, full: b.full, code: codeOf(b) }; });
+		return blocks.map(function (b) { return { uid: b.uid, name: b.name, full: b.full, dev: b.dev || [], code: codeOf(b) }; });
 	}
 
 	function select(i, scrollPreview) {
@@ -1699,6 +1750,46 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		});
 	}
 
+	/* ---------- نمایش در دستگاه‌ها ---------- */
+	var DEVS = [
+		{ k: 'd', ic: 'monitor', fa: 'دسکتاپ', r: '۱۴۴۰ پیکسل و بیشتر' },
+		{ k: 'l', ic: 'laptop', fa: 'لپ‌تاپ', r: '۱۰۲۵ تا ۱۴۳۹' },
+		{ k: 't', ic: 'tablet', fa: 'تبلت', r: '۷۶۸ تا ۱۰۲۴' },
+		{ k: 'm', ic: 'phone', fa: 'موبایل', r: 'کمتر از ۷۶۸' }
+	];
+	function devChip(btn, b) {
+		var d = b.dev || [];
+		btn.classList.toggle('on', d.length > 0);
+		btn.innerHTML = d.length ? DEVS.filter(function (x) { return d.indexOf(x.k) > -1; }).map(function (x) { return ic(x.ic); }).join('') : ic('monitor') + ic('phone');
+		btn.title = d.length ? 'فقط در: ' + DEVS.filter(function (x) { return d.indexOf(x.k) > -1; }).map(function (x) { return x.fa; }).join('، ') : 'نمایش در همه دستگاه‌ها (ریسپانسیو)';
+		btn.setAttribute('aria-label', btn.title);
+	}
+	var dvPop = null;
+	function devPop(btn, b) {
+		if (dvPop) { var was = dvPop.owner === btn; dvPop.remove(); dvPop = null; if (was) { return; } }
+		dvPop = document.createElement('div');
+		dvPop.className = 'kashi-dvpop';
+		dvPop.owner = btn;
+		dvPop.innerHTML = '<b>نمایش این بخش در</b>' + DEVS.map(function (x) {
+			return '<label class="sw dvr"><span class="dvl">' + ic(x.ic) + '<span><b>' + x.fa + '</b><small>' + x.r + '</small></span></span><input type="checkbox" data-k="' + x.k + '"' + ((b.dev || []).indexOf(x.k) > -1 ? ' checked' : '') + '><i></i></label>';
+		}).join('') + '<div class="hint">همه خاموش = نمایش در همه دستگاه‌ها (ریسپانسیو).<br>مثلاً یک هیرو «فقط دسکتاپ و لپ‌تاپ» و یک هیروی دیگر «فقط موبایل و تبلت».</div>';
+		document.body.appendChild(dvPop);
+		var r = btn.getBoundingClientRect();
+		dvPop.style.top = Math.min(r.bottom + 6, window.innerHeight - dvPop.offsetHeight - 8) + 'px';
+		dvPop.style.left = Math.max(8, r.left) + 'px';
+		dvPop.addEventListener('click', function (e) { e.stopPropagation(); });
+		dvPop.querySelectorAll('input').forEach(function (inp) {
+			inp.addEventListener('change', function () {
+				var d = [];
+				dvPop.querySelectorAll('input:checked').forEach(function (c) { d.push(c.getAttribute('data-k')); });
+				b.dev = d.length === DEVS.length ? [] : d;
+				devChip(btn, b);
+				changed();
+			});
+		});
+	}
+	document.addEventListener('click', function () { if (dvPop) { dvPop.remove(); dvPop = null; } });
+
 	function renderList() {
 		list.innerHTML = '';
 		blocks.forEach(function (b, i) {
@@ -1706,6 +1797,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			el.className = 'kashi-item';
 			el.innerHTML = '<span class="n"></span><a class="lnk" target="_blank" style="display:none" title="لینک‌شده به کتابخانه — برای ویرایش اصل آن کلیک کنید">' + ic('link') + '</a><input class="nm" type="text" placeholder="نام بخش">' +
 				'<label class="fw" title="کل عرض صفحه"><input type="checkbox"><span>' + ic('width') + 'تمام‌عرض</span></label>' +
+				'<button type="button" class="dv" title="نمایش در دستگاه‌ها"></button>' +
 				'<span class="acts"><button type="button" data-a="up" title="بالا">' + ic('up') + '</button><button type="button" data-a="down" title="پایین">' + ic('down') + '</button>' +
 				'<button type="button" data-a="dup" title="کپی">' + ic('copy') + '</button><button type="button" data-a="lib" title="ذخیره در کتابخانه">' + ic('bookmark') + '</button><button type="button" data-a="del" title="حذف">' + ic('trash') + '</button></span>';
 			el.querySelector('.n').textContent = i + 1;
@@ -1713,6 +1805,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			nm.value = b.name;
 			nm.addEventListener('focus', function () { if (activeUid !== b.uid) { select(blocks.indexOf(b), true); } });
 			nm.addEventListener('input', function () { b.name = nm.value; markActive(); markDirty(); });
+			var dvb = el.querySelector('.dv');
+			devChip(dvb, b);
+			dvb.addEventListener('click', function (e) { e.stopPropagation(); devPop(dvb, b); });
 			var fw = el.querySelector('.fw input');
 			fw.checked = b.full;
 			fw.addEventListener('change', function () { b.full = fw.checked; changed(); });
@@ -1739,7 +1834,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		} else if (a === 'down' && i < blocks.length - 1) {
 			blocks.splice(i, 1); blocks.splice(i + 1, 0, b); renderList();
 		} else if (a === 'dup') {
-			var copy = makeBlock({ name: b.name + ' (کپی)', code: codeOf(b), full: b.full });
+			var copy = makeBlock({ name: b.name + ' (کپی)', code: codeOf(b), full: b.full, dev: b.dev });
 			blocks.splice(i + 1, 0, copy); renderList(); select(i + 1, false);
 		} else if (a === 'del') {
 			if (!confirm('بخش «' + (b.name || (i + 1)) + '» حذف شود؟')) { return; }
@@ -2065,7 +2160,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			.then(function (d) {
 				if (!d || !d.success) { toast((d && d.data) || 'درج انجام نشد.'); return; }
 				if (!d.data.length) { toast('این مورد خالی است.'); return; }
-				insertAt(d.data.map(function (b) { return { name: b.name || x.title, code: b.code, full: b.full }; }));
+				insertAt(d.data.map(function (b) { return { name: b.name || x.title, code: b.code, full: b.full, dev: b.dev }; }));
 			})
 			.catch(function () { toast('ارتباط با سرور برقرار نشد.'); });
 	}
@@ -2077,7 +2172,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		if (name === null) { return; }
 		post({
 			action: 'kashi_lib_save', nonce: cfg.libNonce, name: name, scope: scope.checked ? '1' : '0',
-			blocks: JSON.stringify([{ name: b.name, code: codeOf(b), full: b.full }])
+			blocks: JSON.stringify([{ name: b.name, code: codeOf(b), full: b.full, dev: b.dev || [] }])
 		}).then(function (d) {
 			if (d && d.success) { toast('«' + (name || b.name) + '» در کتابخانه ذخیره شد', 'ok'); }
 			else { toast((d && d.data) || 'ذخیره در کتابخانه انجام نشد.'); }
@@ -2720,12 +2815,28 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	}
 	frame.addEventListener('load', function () { vDoc = null; vSel = null; vHover = null; if (vOn) { vInstall(); } });
 
-	/* ---------- اندازه‌ها ---------- */
+	/* ---------- اندازه‌ها ----------
+	 * پیش‌نمایش با عرض واقعی هر دستگاه رندر می‌شود (تا media query ها و «نمایش در دستگاه‌ها»
+	 * دقیقاً مثل سایت رفتار کنند) و اگر جا نشود، کوچک‌نمایی می‌شود. */
+	var devW = 1440;
+	function fitFrame() {
+		var view = frame.parentNode, vw = view.clientWidth, vh = view.clientHeight;
+		var k = devW > vw ? vw / devW : 1;
+		frame.style.width = devW + 'px';
+		frame.style.height = (k < 1 ? vh / k : vh) + 'px';
+		frame.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+		view.classList.toggle('scaled', k < 1);
+		var z = $('kashi-zoom');
+		if (z) { z.textContent = devW + 'px' + (k < 1 ? ' · ' + Math.round(k * 100) + '%' : ''); }
+	}
+	window.addEventListener('resize', fitFrame);
+	fitFrame();
 	document.querySelectorAll('.kashi-dev button').forEach(function (b) {
 		b.addEventListener('click', function () {
 			document.querySelectorAll('.kashi-dev button').forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
 			b.classList.add('on'); b.setAttribute('aria-pressed', 'true');
-			frame.style.width = b.getAttribute('data-w');
+			devW = +b.getAttribute('data-w');
+			fitFrame();
 		});
 	});
 
@@ -2736,6 +2847,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		var r = main.getBoundingClientRect(), w = pane.getBoundingClientRect().width + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 80 : 24);
 		pane.style.width = Math.min(Math.max(w, 260), r.width - 200) + 'px';
 		if (cm) { cm.refresh(); }
+		fitFrame();
 	});
 	div.addEventListener('mousedown', function (e) {
 		e.preventDefault();
@@ -2744,6 +2856,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			var r = main.getBoundingClientRect();
 			pane.style.width = Math.min(Math.max(ev.clientX - r.left, 260), r.width - 200) + 'px';
 			if (cm) { cm.refresh(); }
+			fitFrame();
 		}
 		function up() {
 			document.body.classList.remove('kashi-drag');
