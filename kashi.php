@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.5.0
+ * Version:           1.5.1
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.5.0';
+	const VERSION = '1.5.1';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -513,8 +513,44 @@ final class Kashi {
 	}
 
 	/** کامپایل همه بخش‌ها؛ هر بخش CSS محدود به خودش دارد */
+	/**
+	 * سئو: وقتی دو نسخه از یک بخش برای دستگاه‌های مختلف ساخته شده (مثلاً هیروی دسکتاپ و هیروی
+	 * موبایل)، فقط اولین H1 صفحه H1 می‌ماند و H1 بخش‌های مخصوص دستگاه بعدی خودکار به
+	 * <h2 class="kashi-h1"> تبدیل می‌شود؛ CSS همان بخش هم به‌روز می‌شود تا ظاهر تغییر نکند.
+	 */
+	private static function demote_h1( $c ) {
+		$c['html'] = preg_replace_callback(
+			'#<h1\b([^>]*)>#i',
+			function ( $m ) {
+				$a = $m[1];
+				if ( preg_match( '#\sclass\s*=\s*(["\'])(.*?)\1#is', $a, $cm ) ) {
+					$a = str_replace( $cm[0], ' class=' . $cm[1] . trim( $cm[2] . ' kashi-h1' ) . $cm[1], $a );
+				} else {
+					$a .= ' class="kashi-h1"';
+				}
+				return '<h2' . $a . '>';
+			},
+			$c['html']
+		);
+		$c['html'] = preg_replace( '#</h1\s*>#i', '</h2>', $c['html'] );
+		// selector ها: h1 → .kashi-h1 (فقط در بخش انتخابگر، نه در مقدار property ها)
+		$c['css'] = preg_replace_callback(
+			'#([^{}]+)(\{)#',
+			function ( $m ) {
+				if ( '@' === substr( ltrim( $m[1] ), 0, 1 ) ) {
+					return $m[0];
+				}
+				return preg_replace( '~(?<![\w.#-])h1(?![\w-])~i', '.kashi-h1', $m[1] ) . $m[2];
+			},
+			$c['css']
+		);
+		$c['css'] .= '.kashi-h1{font-size:2em;line-height:1.25}';
+		return $c;
+	}
+
 	private static function compile_blocks( $blocks, $scope_on, $trusted ) {
-		$out = array();
+		$out     = array();
+		$h1_seen = false;
 		foreach ( array_values( $blocks ) as $i => $b ) {
 			$code      = $trusted ? $b['code'] : self::strip_scripts( $b['code'] );
 			$c         = self::compile( $code, '.kashi-b-' . $b['uid'], $scope_on, $trusted );
@@ -522,6 +558,12 @@ final class Kashi {
 			// تصویر LCP فقط برای کاشی اولی که در همه دستگاه‌ها دیده می‌شود؛ کاشی‌های مخصوص یک دستگاه
 			// lazy می‌مانند تا تصویرشان در دستگاه‌های دیگر (که پنهان است) دانلود نشود
 			$c['html'] = self::optimize_media( $c['html'], 0 === $i && ! $dev );
+			$has_h1 = (bool) preg_match( '#<h1\b#i', $c['html'] );
+			if ( $has_h1 && $h1_seen && $dev ) {
+				$c = self::demote_h1( $c );
+			} elseif ( $has_h1 ) {
+				$h1_seen = true;
+			}
 			$c['css'] .= self::device_css( $b['uid'], $dev );
 			$out[]     = array(
 				'uid'  => $b['uid'],
@@ -2263,7 +2305,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function seoAudit() {
 		var res = { error: [], warn: [], ok: [], info: [] };
 		function add(level, msg, bi, sub) { res[level].push({ msg: msg, bi: bi, sub: sub || '' }); }
-		var all = getBlocks(), h1 = [], heads = [], words = 0, imgs = 0, noAlt = 0, noDim = 0, types = [], ids = {}, linked = 0;
+		var all = getBlocks(), h1 = [], h1Demoted = [], heads = [], words = 0, imgs = 0, noAlt = 0, noDim = 0, types = [], ids = {}, linked = 0;
 		var layout = (!cfg.isSection && panel) ? getLayout() : null;
 
 		all.forEach(function (b, bi) {
@@ -2278,8 +2320,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			});
 			doc.querySelectorAll('script,style,noscript,template').forEach(function (x) { x.remove(); });
 
+			var limited = b.dev && b.dev.length, demote = limited && h1.length > 0 && !!doc.querySelector('h1');
 			doc.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(function (h) {
 				var lv = +h.tagName.charAt(1);
+				if (lv === 1 && demote) { // مثل خروجی سایت: H1 تکراری بخش مخصوص دستگاه، h2 می‌شود
+					h1Demoted.push(bname); heads.push({ lv: 2, bi: bi, t: txt(h), bname: bname }); return;
+				}
 				heads.push({ lv: lv, bi: bi, t: txt(h), bname: bname });
 				if (lv === 1) { h1.push({ bi: bi, t: txt(h), bname: bname }); }
 				if (!txt(h)) { add('warn', 'تیتر خالی <h' + lv + '>', bi, bname); }
@@ -2316,6 +2362,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				add('error', 'صفحه ' + h1.length + ' تیتر H1 دارد؛ فقط یکی بگذارید و بقیه را h2 کنید', h1[1].bi, h1.map(function (x) { return x.bname + ': ' + x.t.slice(0, 30); }).join(' | '));
 			} else {
 				add('ok', 'یک H1: «' + h1[0].t.slice(0, 60) + '»');
+			}
+			if (h1Demoted.length && layout !== 'default') {
+				add('ok', 'H1 نسخه مخصوص دستگاه خودکار h2 می‌شود (ظاهر تغییر نمی‌کند): ' + h1Demoted.join('، '));
 			}
 		}
 		// ترتیب تیترها
@@ -2439,7 +2488,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		while (el && el !== rootEl) {
 			var par = el.parentElement;
 			if (!par) { return null; }
-			p.unshift({ tag: el.tagName.toLowerCase(), i: vDomKids(par).indexOf(el) });
+			var tg = el.tagName.toLowerCase();
+			if (tg === 'h2' && el.classList.contains('kashi-h1')) { tg = 'h1'; } // H1 خودکار h2 شده
+			p.unshift({ tag: tg, i: vDomKids(par).indexOf(el) });
 			el = par;
 		}
 		return el === rootEl ? p : null;
