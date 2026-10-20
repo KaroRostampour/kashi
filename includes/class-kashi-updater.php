@@ -170,22 +170,22 @@ final class Kashi_Updater {
 	public static function generate_keys() {
 		check_admin_referer( 'kashi_gen_keys' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( Kashi::t( 'دسترسی ندارید.' ) );
 		}
 		if ( ! function_exists( 'sodium_crypto_sign_keypair' ) ) {
-			wp_die( 'این سرور از امضای دیجیتال (sodium) پشتیبانی نمی‌کند.' );
+			wp_die( Kashi::t( 'این سرور از امضای دیجیتال (sodium) پشتیبانی نمی‌کند.' ) );
 		}
 		list( $pk, $sk ) = self::create_keypair();
 		nocache_headers();
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="kashi-signing-key-' . gmdate( 'Ymd' ) . '.txt"' );
-		echo "KASHI SIGNING KEY — کلید خصوصی امضای آپدیت کاشی\n";
-		echo "==================================================\n\n";
-		echo "کلید خصوصی (محرمانه — به هیچ‌کس ندهید، در سایت ذخیره نکنید):\n" . $sk . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo "کلید عمومی (این را در «کلید عمومی امضا» همه سایت‌ها بگذارید):\n" . $pk . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo "هر بار که نسخه جدیدی منتشر می‌کنید، کلید خصوصی را در فیلد «کلید خصوصی امضا» بچسبانید.\n";
-		echo "این فایل را در جای امن (مثلاً مدیر رمز عبور) نگه دارید. اگر گم شود، کلید جدید بسازید\n";
-		echo "و کلید عمومی جدید را در همه سایت‌ها عوض کنید.\n";
+		echo Kashi::t( 'KASHI SIGNING KEY — کلید خصوصی امضای آپدیت کاشی' ) . "\n";
+		echo Kashi::t( '==================================================' ) . "\n\n";
+		echo Kashi::t( 'کلید خصوصی (محرمانه — به هیچ‌کس ندهید، در سایت ذخیره نکنید):' ) . "\n" . $sk . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo Kashi::t( 'کلید عمومی (این را در «کلید عمومی امضا» همه سایت‌ها بگذارید):' ) . "\n" . $pk . "\n\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo Kashi::t( 'هر بار که نسخه جدیدی منتشر می‌کنید، کلید خصوصی را در فیلد «کلید خصوصی امضا» بچسبانید.' ) . "\n";
+		echo Kashi::t( 'این فایل را در جای امن (مثلاً مدیر رمز عبور) نگه دارید. اگر گم شود، کلید جدید بسازید' ) . "\n";
+		echo Kashi::t( 'و کلید عمومی جدید را در همه سایت‌ها عوض کنید.' ) . "\n";
 		exit;
 	}
 
@@ -238,25 +238,25 @@ final class Kashi_Updater {
 		);
 
 		if ( is_wp_error( $res ) ) {
-			self::fail( 'اتصال به سرور آپدیت ممکن نشد: ' . $res->get_error_message() );
+			self::fail( Kashi::t( 'اتصال به سرور آپدیت ممکن نشد: ' ) . $res->get_error_message() );
 			return null;
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		if ( 200 !== $code ) {
-			self::fail( 403 === $code ? 'کلید دسترسی آپدیت اشتباه است.' : 'سرور آپدیت پاسخ معتبر نداد (کد ' . $code . ').' );
+			self::fail( 403 === $code ? Kashi::t( 'کلید دسترسی آپدیت اشتباه است.' ) : Kashi::t( 'سرور آپدیت پاسخ معتبر نداد (کد ' ) . $code . ').' );
 			return null;
 		}
 		$data = json_decode( wp_remote_retrieve_body( $res ), true );
 		if ( ! is_array( $data ) || empty( $data['version'] ) || empty( $data['package'] ) ) {
-			self::fail( 'فایل آپدیت (manifest) نامعتبر است.' );
+			self::fail( Kashi::t( 'فایل آپدیت (manifest) نامعتبر است.' ) );
 			return null;
 		}
 		if ( ! self::is_safe_url( $data['package'] ) ) {
-			self::fail( 'آدرس فایل نسخه جدید باید https باشد.' );
+			self::fail( Kashi::t( 'آدرس فایل نسخه جدید باید https باشد.' ) );
 			return null;
 		}
 		if ( empty( $data['sha256'] ) || ! preg_match( '/^[a-f0-9]{64}$/i', (string) $data['sha256'] ) ) {
-			self::fail( 'فایل آپدیت امضای SHA-256 ندارد؛ برای امنیت نصب نمی‌شود.' );
+			self::fail( Kashi::t( 'فایل آپدیت امضای SHA-256 ندارد؛ برای امنیت نصب نمی‌شود.' ) );
 			return null;
 		}
 
@@ -273,14 +273,14 @@ final class Kashi_Updater {
 			'signature'    => isset( $data['signature'] ) ? preg_replace( '#[^A-Za-z0-9+/=]#', '', (string) $data['signature'] ) : '',
 		);
 		if ( ! self::signature_ok( $m ) ) {
-			self::fail( 'امضای دیجیتال نسخه ' . $m['version'] . ' معتبر نیست یا وجود ندارد؛ برای امنیت نمایش و نصب نمی‌شود.' );
+			self::fail( Kashi::t( 'امضای دیجیتال نسخه ' ) . $m['version'] . Kashi::t( ' معتبر نیست یا وجود ندارد؛ برای امنیت نمایش و نصب نمی‌شود.' ) );
 			return null;
 		}
 		set_site_transient( self::CACHE, $m, self::CACHE_TTL );
 		self::set_status(
 			version_compare( $m['version'], self::$version, '>' )
-				? 'نسخه جدید ' . $m['version'] . ' موجود است.'
-				: 'افزونه به‌روز است (آخرین نسخه: ' . $m['version'] . ').'
+				? Kashi::t( 'نسخه جدید ' ) . $m['version'] . Kashi::t( ' موجود است.' )
+				: Kashi::t( 'افزونه به‌روز است (آخرین نسخه: ' ) . $m['version'] . ').'
 		);
 		return $m;
 	}
@@ -315,7 +315,7 @@ final class Kashi_Updater {
 			)
 		);
 		if ( is_wp_error( $res ) ) {
-			self::fail( 'اتصال به گیت‌هاب ممکن نشد: ' . $res->get_error_message() );
+			self::fail( Kashi::t( 'اتصال به گیت‌هاب ممکن نشد: ' ) . $res->get_error_message() );
 			return null;
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
@@ -324,20 +324,20 @@ final class Kashi_Updater {
 			return self::manifest_github_branch( $s );
 		}
 		if ( 404 === $code ) {
-			self::fail( 'مخزن پیدا نشد یا خصوصی است؛ «توکن گیت‌هاب» را وارد کنید.' );
+			self::fail( Kashi::t( 'مخزن پیدا نشد یا خصوصی است؛ «توکن گیت‌هاب» را وارد کنید.' ) );
 			return null;
 		}
 		if ( 401 === $code || 403 === $code ) {
-			self::fail( 401 === $code ? 'توکن گیت‌هاب نامعتبر یا منقضی شده است.' : 'گیت‌هاب درخواست را رد کرد (محدودیت تعداد درخواست یا دسترسی توکن). کمی بعد دوباره امتحان کنید.' );
+			self::fail( 401 === $code ? Kashi::t( 'توکن گیت‌هاب نامعتبر یا منقضی شده است.' ) : Kashi::t( 'گیت‌هاب درخواست را رد کرد (محدودیت تعداد درخواست یا دسترسی توکن). کمی بعد دوباره امتحان کنید.' ) );
 			return null;
 		}
 		if ( 200 !== $code ) {
-			self::fail( 'پاسخ نامعتبر از گیت‌هاب (کد ' . $code . ').' );
+			self::fail( Kashi::t( 'پاسخ نامعتبر از گیت‌هاب (کد ' ) . $code . ').' );
 			return null;
 		}
 		$d = json_decode( wp_remote_retrieve_body( $res ), true );
 		if ( ! is_array( $d ) || empty( $d['tag_name'] ) ) {
-			self::fail( 'اطلاعات نسخه در گیت‌هاب نامعتبر است.' );
+			self::fail( Kashi::t( 'اطلاعات نسخه در گیت‌هاب نامعتبر است.' ) );
 			return null;
 		}
 		$asset = null;
@@ -348,7 +348,7 @@ final class Kashi_Updater {
 			}
 		}
 		if ( ! $asset ) {
-			self::fail( 'در آخرین نسخه گیت‌هاب (' . $d['tag_name'] . ') فایل kashi.zip ضمیمه نشده است.' );
+			self::fail( Kashi::t( 'در آخرین نسخه گیت‌هاب (' ) . $d['tag_name'] . Kashi::t( ') فایل kashi.zip ضمیمه نشده است.' ) );
 			return null;
 		}
 		$sha = '';
@@ -371,8 +371,8 @@ final class Kashi_Updater {
 		set_site_transient( self::CACHE, $m, self::CACHE_TTL );
 		self::set_status(
 			version_compare( $m['version'], self::$version, '>' )
-				? 'نسخه جدید ' . $m['version'] . ' در گیت‌هاب موجود است.'
-				: 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' . $m['version'] . ').'
+				? Kashi::t( 'نسخه جدید ' ) . $m['version'] . Kashi::t( ' در گیت‌هاب موجود است.' )
+				: Kashi::t( 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' ) . $m['version'] . ').'
 		);
 		return $m;
 	}
@@ -389,7 +389,7 @@ final class Kashi_Updater {
 		);
 		$repo = wp_safe_remote_get( $base, $args );
 		if ( is_wp_error( $repo ) || 200 !== (int) wp_remote_retrieve_response_code( $repo ) ) {
-			self::fail( is_wp_error( $repo ) ? 'اتصال به گیت‌هاب ممکن نشد: ' . $repo->get_error_message() : 'توکن به مخزن ' . $s['gh_repo'] . ' دسترسی ندارد.' );
+			self::fail( is_wp_error( $repo ) ? Kashi::t( 'اتصال به گیت‌هاب ممکن نشد: ' ) . $repo->get_error_message() : Kashi::t( 'توکن به مخزن ' ) . $s['gh_repo'] . Kashi::t( ' دسترسی ندارد.' ) );
 			return null;
 		}
 		$info   = json_decode( wp_remote_retrieve_body( $repo ), true );
@@ -397,7 +397,7 @@ final class Kashi_Updater {
 		$com    = wp_safe_remote_get( $base . '/commits/' . rawurlencode( $branch ), $args );
 		$cd     = is_wp_error( $com ) ? null : json_decode( wp_remote_retrieve_body( $com ), true );
 		if ( ! is_array( $cd ) || empty( $cd['sha'] ) || ! preg_match( '/^[a-f0-9]{40}$/', $cd['sha'] ) ) {
-			self::fail( 'آخرین کامیت مخزن خوانده نشد.' );
+			self::fail( Kashi::t( 'آخرین کامیت مخزن خوانده نشد.' ) );
 			return null;
 		}
 		$sha  = $cd['sha'];
@@ -405,7 +405,7 @@ final class Kashi_Updater {
 		$file = wp_safe_remote_get( $base . '/contents/kashi.php?ref=' . $sha, $args );
 		$head = is_wp_error( $file ) ? '' : substr( (string) wp_remote_retrieve_body( $file ), 0, 8192 );
 		if ( ! preg_match( '/^[ \t\/*#@]*Version:\s*([0-9][0-9A-Za-z.\-]*)/mi', $head, $mm ) ) {
-			self::fail( 'شماره نسخه از kashi.php مخزن خوانده نشد.' );
+			self::fail( Kashi::t( 'شماره نسخه از kashi.php مخزن خوانده نشد.' ) );
 			return null;
 		}
 		$m = array(
@@ -425,8 +425,8 @@ final class Kashi_Updater {
 		set_site_transient( self::CACHE, $m, self::CACHE_TTL );
 		self::set_status(
 			version_compare( $m['version'], self::$version, '>' )
-				? 'نسخه جدید ' . $m['version'] . ' در گیت‌هاب موجود است.'
-				: 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' . $m['version'] . ').'
+				? Kashi::t( 'نسخه جدید ' ) . $m['version'] . Kashi::t( ' در گیت‌هاب موجود است.' )
+				: Kashi::t( 'افزونه به‌روز است (آخرین نسخه در گیت‌هاب: ' ) . $m['version'] . ').'
 		);
 		return $m;
 	}
@@ -444,7 +444,7 @@ final class Kashi_Updater {
 		if ( $wp_filesystem && $wp_filesystem->move( untrailingslashit( $source ), $want, true ) ) {
 			return trailingslashit( $want );
 		}
-		return new WP_Error( 'kashi_rename', 'پوشه بسته گیت‌هاب به kashi تغییر نام داده نشد.' );
+		return new WP_Error( 'kashi_rename', Kashi::t( 'پوشه بسته گیت‌هاب به kashi تغییر نام داده نشد.' ) );
 	}
 
 	/** دانلود فایل Release گیت‌هاب (خصوصی یا عمومی) و بررسی آن */
@@ -452,7 +452,7 @@ final class Kashi_Updater {
 		$s   = self::settings();
 		$tmp = wp_tempnam( 'kashi-github.zip' );
 		if ( ! $tmp ) {
-			return new WP_Error( 'kashi_tmp', 'فایل موقت ساخته نشد.' );
+			return new WP_Error( 'kashi_tmp', Kashi::t( 'فایل موقت ساخته نشد.' ) );
 		}
 		// قدم ۱: آدرس API فایل با توکن؛ گیت‌هاب به آدرس موقت دانلود هدایت می‌کند
 		$r = wp_safe_remote_get(
@@ -474,7 +474,7 @@ final class Kashi_Updater {
 			$loc = (string) wp_remote_retrieve_header( $r, 'location' );
 			if ( 'https' !== wp_parse_url( $loc, PHP_URL_SCHEME ) ) {
 				wp_delete_file( $tmp );
-				return new WP_Error( 'kashi_gh_redirect', 'آدرس دانلود گیت‌هاب نامعتبر است.' );
+				return new WP_Error( 'kashi_gh_redirect', Kashi::t( 'آدرس دانلود گیت‌هاب نامعتبر است.' ) );
 			}
 			// قدم ۲: آدرس موقت (امضاشده توسط گیت‌هاب) بدون توکن
 			$r    = wp_safe_remote_get(
@@ -493,21 +493,21 @@ final class Kashi_Updater {
 		}
 		if ( 200 !== $code ) {
 			wp_delete_file( $tmp );
-			return new WP_Error( 'kashi_gh_download', 'دانلود از گیت‌هاب انجام نشد (کد ' . $code . ').' );
+			return new WP_Error( 'kashi_gh_download', Kashi::t( 'دانلود از گیت‌هاب انجام نشد (کد ' ) . $code . ').' );
 		}
 		if ( '' !== $m['sha256'] && ! hash_equals( $m['sha256'], strtolower( (string) hash_file( 'sha256', $tmp ) ) ) ) {
 			wp_delete_file( $tmp );
-			return new WP_Error( 'kashi_checksum', 'فایل دانلودشده با فایل گیت‌هاب یکی نیست (SHA-256)؛ نصب متوقف شد.' );
+			return new WP_Error( 'kashi_checksum', Kashi::t( 'فایل دانلودشده با فایل گیت‌هاب یکی نیست (SHA-256)؛ نصب متوقف شد.' ) );
 		}
 		$info = self::read_zip( $tmp );
 		$fold = empty( $m['branch'] ) ? $info['folder'] === dirname( self::$basename ) : '' !== $info['folder'];
 		if ( ! $fold || '' === $info['version'] ) {
 			wp_delete_file( $tmp );
-			return new WP_Error( 'kashi_gh_bad', 'فایل گیت‌هاب بسته معتبر کاشی نیست (پوشه داخل zip باید ' . dirname( self::$basename ) . '/ باشد).' );
+			return new WP_Error( 'kashi_gh_bad', Kashi::t( 'فایل گیت‌هاب بسته معتبر کاشی نیست (پوشه داخل zip باید ' ) . dirname( self::$basename ) . Kashi::t( '/ باشد).' ) );
 		}
 		if ( version_compare( $info['version'], $m['version'], '!=' ) ) {
 			wp_delete_file( $tmp );
-			return new WP_Error( 'kashi_gh_version', 'نسخه داخل فایل (' . $info['version'] . ') با نسخه Release (' . $m['version'] . ') یکی نیست.' );
+			return new WP_Error( 'kashi_gh_version', Kashi::t( 'نسخه داخل فایل (' ) . $info['version'] . Kashi::t( ') با نسخه Release (' ) . $m['version'] . Kashi::t( ') یکی نیست.' ) );
 		}
 		return $tmp;
 	}
@@ -595,7 +595,7 @@ final class Kashi_Updater {
 			return $result;
 		}
 		return (object) array(
-			'name'          => 'کاشی — Kashi',
+			'name'          => Kashi::t( 'کاشی — Kashi' ),
 			'slug'          => self::SLUG,
 			'version'       => $m['version'],
 			'author'        => 'Karorostampoor@gmail.com',
@@ -606,7 +606,7 @@ final class Kashi_Updater {
 			'last_updated'  => $m['last_updated'],
 			'download_link' => $m['package'],
 			'sections'      => array(
-				'description' => '<p>صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید.</p>',
+				'description' => '<p>' . Kashi::t( 'صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید.' ) . '</p>',
 				'changelog'   => $m['changelog'] ? wpautop( $m['changelog'] ) : '<p>—</p>',
 			),
 		);
@@ -632,18 +632,18 @@ final class Kashi_Updater {
 		}
 		if ( is_array( $m ) && isset( $m['source'] ) && 'github' === $m['source'] ) {
 			if ( $package !== $m['package'] ) {
-				return new WP_Error( 'kashi_package_mismatch', 'فایل این آپدیت با نسخه گیت‌هاب یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
+				return new WP_Error( 'kashi_package_mismatch', Kashi::t( 'فایل این آپدیت با نسخه گیت‌هاب یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' ) );
 			}
 			return self::github_download( $m );
 		}
 		if ( ! $m || empty( $m['sha256'] ) ) {
-			return new WP_Error( 'kashi_no_checksum', 'امضای نسخه جدید دریافت نشد؛ برای امنیت نصب متوقف شد. «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
+			return new WP_Error( 'kashi_no_checksum', Kashi::t( 'امضای نسخه جدید دریافت نشد؛ برای امنیت نصب متوقف شد. «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' ) );
 		}
 		if ( ! self::signature_ok( $m ) ) {
-			return new WP_Error( 'kashi_signature', 'امضای دیجیتال این نسخه معتبر نیست؛ نصب متوقف شد.' );
+			return new WP_Error( 'kashi_signature', Kashi::t( 'امضای دیجیتال این نسخه معتبر نیست؛ نصب متوقف شد.' ) );
 		}
 		if ( $package !== $m['package'] ) {
-			return new WP_Error( 'kashi_package_mismatch', 'فایل این آپدیت با نسخه اعلام‌شده سرور یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' );
+			return new WP_Error( 'kashi_package_mismatch', Kashi::t( 'فایل این آپدیت با نسخه اعلام‌شده سرور یکی نیست؛ «بررسی آپدیت» را بزنید و دوباره امتحان کنید.' ) );
 		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -654,15 +654,15 @@ final class Kashi_Updater {
 		}
 		if ( ! hash_equals( $m['sha256'], (string) hash_file( 'sha256', $tmp ) ) ) {
 			wp_delete_file( $tmp );
-			return new WP_Error( 'kashi_checksum', 'فایل دانلودشده با امضای نسخه (SHA-256) یکی نیست؛ نصب متوقف شد. دوباره امتحان کنید یا فایل سرور را بررسی کنید.' );
+			return new WP_Error( 'kashi_checksum', Kashi::t( 'فایل دانلودشده با امضای نسخه (SHA-256) یکی نیست؛ نصب متوقف شد. دوباره امتحان کنید یا فایل سرور را بررسی کنید.' ) );
 		}
 		return $tmp;
 	}
 
 	public static function row_meta( $links, $file ) {
 		if ( $file === self::$basename && current_user_can( 'update_plugins' ) ) {
-			$links[] = '<a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_check_updates' ), 'kashi_check_updates' ) ) . '">بررسی آپدیت</a>';
-			$links[] = '<a href="' . esc_url( admin_url( 'edit.php?post_type=lsec_section&page=kashi-settings' ) ) . '">تنظیمات</a>';
+			$links[] = '<a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_check_updates' ), 'kashi_check_updates' ) ) . '">' . Kashi::t( 'بررسی آپدیت' ) . '</a>';
+			$links[] = '<a href="' . esc_url( admin_url( 'edit.php?post_type=lsec_section&page=kashi-settings' ) ) . '">' . Kashi::t( 'تنظیمات' ) . '</a>';
 		}
 		return $links;
 	}
@@ -670,7 +670,7 @@ final class Kashi_Updater {
 	public static function check_now() {
 		check_admin_referer( 'kashi_check_updates' );
 		if ( ! current_user_can( 'update_plugins' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( Kashi::t( 'دسترسی ندارید.' ) );
 		}
 		self::flush_cache();
 		self::manifest( true );
@@ -688,7 +688,7 @@ final class Kashi_Updater {
 	public static function offline_update() {
 		check_admin_referer( 'kashi_offline_update' );
 		if ( ! current_user_can( 'update_plugins' ) || ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( Kashi::t( 'دسترسی ندارید.' ) );
 		}
 		$res = self::offline_install(
 			isset( $_FILES['kashi_offline_zip'] ) ? $_FILES['kashi_offline_zip'] : null, // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
@@ -713,10 +713,10 @@ final class Kashi_Updater {
 		$info = self::read_zip( $path );
 		$dir  = dirname( self::$basename );
 		if ( '' === $info['version'] || $info['folder'] !== $dir ) {
-			return new WP_Error( 'kashi_off_bad', 'این فایل، بسته افزونه کاشی نیست (پوشه داخل zip باید ' . $dir . '/ باشد).' );
+			return new WP_Error( 'kashi_off_bad', Kashi::t( 'این فایل، بسته افزونه کاشی نیست (پوشه داخل zip باید ' ) . $dir . Kashi::t( '/ باشد).' ) );
 		}
 		if ( version_compare( $info['version'], self::$version, '<' ) ) {
-			return new WP_Error( 'kashi_off_old', 'نسخه این فایل (' . $info['version'] . ') از نسخه نصب‌شده (' . self::$version . ') قدیمی‌تر است.' );
+			return new WP_Error( 'kashi_off_old', Kashi::t( 'نسخه این فایل (' ) . $info['version'] . Kashi::t( ') از نسخه نصب‌شده (' ) . self::$version . Kashi::t( ') قدیمی‌تر است.' ) );
 		}
 		$sha = strtolower( (string) hash_file( 'sha256', $path ) );
 		if ( '' !== self::pinned_key() ) {
@@ -726,10 +726,10 @@ final class Kashi_Updater {
 				'signature' => preg_replace( '#[^A-Za-z0-9+/=]#', '', $sig ),
 			);
 			if ( ! self::signature_ok( $m ) ) {
-				return new WP_Error( 'kashi_off_sig', 'امضای دیجیتال با این فایل نمی‌خواند؛ نصب نشد. امضا را از «سرور آپدیت» همان نسخه کپی کنید.' );
+				return new WP_Error( 'kashi_off_sig', Kashi::t( 'امضای دیجیتال با این فایل نمی‌خواند؛ نصب نشد. امضا را از «سرور آپدیت» همان نسخه کپی کنید.' ) );
 			}
 		} elseif ( ! $trust ) {
-			return new WP_Error( 'kashi_off_trust', 'کلید عمومی امضا تنظیم نشده؛ برای نصب، تأیید کنید که فایل را از منبع مطمئن گرفته‌اید.' );
+			return new WP_Error( 'kashi_off_trust', Kashi::t( 'کلید عمومی امضا تنظیم نشده؛ برای نصب، تأیید کنید که فایل را از منبع مطمئن گرفته‌اید.' ) );
 		}
 		return array( $info, $sha );
 	}
@@ -740,10 +740,10 @@ final class Kashi_Updater {
 	 */
 	public static function offline_install( $file, $sig, $trust ) {
 		if ( ! is_array( $file ) || ! empty( $file['error'] ) || empty( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) ) {
-			return new WP_Error( 'kashi_off_nofile', 'فایل zip انتخاب نشد یا کامل بارگذاری نشد.' );
+			return new WP_Error( 'kashi_off_nofile', Kashi::t( 'فایل zip انتخاب نشد یا کامل بارگذاری نشد.' ) );
 		}
 		if ( (int) $file['size'] > 20 * MB_IN_BYTES ) {
-			return new WP_Error( 'kashi_off_big', 'حجم فایل بیش از حد مجاز است.' );
+			return new WP_Error( 'kashi_off_big', Kashi::t( 'حجم فایل بیش از حد مجاز است.' ) );
 		}
 		$path = $file['tmp_name'];
 		$chk  = self::offline_check( $path, $sig, $trust );
@@ -758,11 +758,11 @@ final class Kashi_Updater {
 		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 		$tmp = wp_tempnam( 'kashi-offline.zip' );
 		if ( ! $tmp || ! @move_uploaded_file( $path, $tmp ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			return new WP_Error( 'kashi_off_move', 'فایل در پوشه موقت ذخیره نشد.' );
+			return new WP_Error( 'kashi_off_move', Kashi::t( 'فایل در پوشه موقت ذخیره نشد.' ) );
 		}
 		if ( ! hash_equals( $sha, strtolower( (string) hash_file( 'sha256', $tmp ) ) ) ) {
 			wp_delete_file( $tmp );
-			return new WP_Error( 'kashi_off_changed', 'فایل هنگام انتقال تغییر کرد؛ نصب نشد.' );
+			return new WP_Error( 'kashi_off_changed', Kashi::t( 'فایل هنگام انتقال تغییر کرد؛ نصب نشد.' ) );
 		}
 		$skin     = new WP_Ajax_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
@@ -784,10 +784,10 @@ final class Kashi_Updater {
 			if ( is_wp_error( $err ) && $err->has_errors() ) {
 				return $err;
 			}
-			return new WP_Error( 'kashi_off_fail', 'نصب انجام نشد. دسترسی نوشتن روی پوشه افزونه‌ها را بررسی کنید.' );
+			return new WP_Error( 'kashi_off_fail', Kashi::t( 'نصب انجام نشد. دسترسی نوشتن روی پوشه افزونه‌ها را بررسی کنید.' ) );
 		}
 		self::flush_cache();
-		self::set_status( 'نسخه ' . $info['version'] . ' به‌صورت آفلاین نصب شد.' );
+		self::set_status( Kashi::t( 'نسخه ' ) . $info['version'] . Kashi::t( ' به‌صورت آفلاین نصب شد.' ) );
 		return true;
 	}
 
@@ -810,14 +810,14 @@ final class Kashi_Updater {
 		$s = self::settings();
 		$r = get_option( self::OPT_RELEASE, array() );
 		if ( empty( $s['server'] ) || ! is_array( $r ) || empty( $r['version'] ) ) {
-			return new WP_Error( 'kashi_no_release', 'سرور آپدیت فعال نیست.', array( 'status' => 404 ) );
+			return new WP_Error( 'kashi_no_release', Kashi::t( 'سرور آپدیت فعال نیست.' ), array( 'status' => 404 ) );
 		}
 		$given = (string) $request->get_header( 'x_kashi_key' );
 		if ( '' === $given ) {
 			$given = (string) $request->get_param( 'key' ); // سازگاری با نسخه ۱.۱.۰
 		}
 		if ( '' !== $s['server_key'] && ! hash_equals( $s['server_key'], $given ) ) {
-			return new WP_Error( 'kashi_forbidden', 'کلید دسترسی نامعتبر است.', array( 'status' => 403 ) );
+			return new WP_Error( 'kashi_forbidden', Kashi::t( 'کلید دسترسی نامعتبر است.' ), array( 'status' => 403 ) );
 		}
 		$res = rest_ensure_response(
 			array(
@@ -880,8 +880,8 @@ final class Kashi_Updater {
 	public static function menu() {
 		$hook = add_submenu_page(
 			'edit.php?post_type=lsec_section',
-			'تنظیمات کاشی',
-			'تنظیمات',
+			Kashi::t( 'تنظیمات کاشی' ),
+			Kashi::t( 'تنظیمات' ),
 			'manage_options',
 			'kashi-settings',
 			array( __CLASS__, 'page' )
@@ -898,26 +898,26 @@ final class Kashi_Updater {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['kashi_checked'] ) ) {
 			$s = self::settings();
-			echo '<div class="notice notice-info is-dismissible"><p><b>کاشی:</b> ' . esc_html( $s['last_status'] ? $s['last_status'] : 'بررسی انجام شد.' ) . '</p></div>';
+			echo '<div class="notice notice-info is-dismissible"><p><b>' . Kashi::t( 'کاشی:' ) . '</b> ' . esc_html( $s['last_status'] ? $s['last_status'] : Kashi::t( 'بررسی انجام شد.' ) ) . '</p></div>';
 		}
 		if ( isset( $_GET['kashi_saved'] ) && ! self::$inline ) {
 			$code = sanitize_key( wp_unslash( $_GET['kashi_saved'] ) );
 			$all  = array(
-				'1'           => array( 'success', 'تنظیمات ذخیره شد.' ),
-				'signed'      => array( 'success', 'نسخه با امضای دیجیتال منتشر شد. کلید خصوصی ذخیره نشد.' ),
-				'noversion'   => array( 'warning', 'نسخه از داخل فایل zip خوانده نشد؛ شماره نسخه را دستی وارد کنید.' ),
-				'badkey'      => array( 'error', 'کلید خصوصی نامعتبر است؛ نسخه امضا نشد.' ),
-				'keymismatch' => array( 'error', 'این کلید خصوصی با کلید عمومی این سرور یکی نیست؛ نسخه امضا نشد.' ),
-				'offok'       => array( 'success', 'کاشی با فایل آفلاین به‌روز شد.' ),
+				'1'           => array( 'success', Kashi::t( 'تنظیمات ذخیره شد.' ) ),
+				'signed'      => array( 'success', Kashi::t( 'نسخه با امضای دیجیتال منتشر شد. کلید خصوصی ذخیره نشد.' ) ),
+				'noversion'   => array( 'warning', Kashi::t( 'نسخه از داخل فایل zip خوانده نشد؛ شماره نسخه را دستی وارد کنید.' ) ),
+				'badkey'      => array( 'error', Kashi::t( 'کلید خصوصی نامعتبر است؛ نسخه امضا نشد.' ) ),
+				'keymismatch' => array( 'error', Kashi::t( 'این کلید خصوصی با کلید عمومی این سرور یکی نیست؛ نسخه امضا نشد.' ) ),
+				'offok'       => array( 'success', Kashi::t( 'کاشی با فایل آفلاین به‌روز شد.' ) ),
 				'offerr'      => array( 'error', '' ),
 			);
 			$n = isset( $all[ $code ] ) ? $all[ $code ] : $all['1'];
 			if ( 'offerr' === $code ) {
 				$k    = 'kashi_offline_msg_' . get_current_user_id();
-				$n[1] = 'آپدیت آفلاین انجام نشد: ' . (string) get_transient( $k );
+				$n[1] = Kashi::t( 'آپدیت آفلاین انجام نشد: ' ) . (string) get_transient( $k );
 				delete_transient( $k );
 			}
-			echo '<div class="notice notice-' . esc_attr( $n[0] ) . ' is-dismissible"><p><b>کاشی:</b> ' . esc_html( $n[1] ) . '</p></div>';
+			echo '<div class="notice notice-' . esc_attr( $n[0] ) . ' is-dismissible"><p><b>' . Kashi::t( 'کاشی:' ) . '</b> ' . esc_html( $n[1] ) . '</p></div>';
 		}
 		// phpcs:enable
 	}
@@ -925,7 +925,7 @@ final class Kashi_Updater {
 	public static function save_settings() {
 		check_admin_referer( 'kashi_save_settings' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( Kashi::t( 'دسترسی ندارید.' ) );
 		}
 		$old = get_option( self::OPT, array() );
 		$old = is_array( $old ) ? $old : array();
@@ -947,6 +947,14 @@ final class Kashi_Updater {
 		self::flush_cache();
 		if ( class_exists( 'Kashi_Net' ) ) {
 			Kashi_Net::save_from_post();
+		}
+		if ( isset( $_POST['kashi_lang'] ) ) {
+			$lg = sanitize_key( wp_unslash( $_POST['kashi_lang'] ) );
+			update_option( 'kashi_lang', ( 'auto' === $lg || isset( Kashi::LANGS[ $lg ] ) ) ? $lg : 'auto', true );
+		}
+		if ( isset( $_POST['kashi_calendar'] ) ) {
+			$cl = sanitize_key( wp_unslash( $_POST['kashi_calendar'] ) );
+			update_option( 'kashi_calendar', in_array( $cl, array( 'auto', 'jalali', 'gregorian' ), true ) ? $cl : 'auto', true );
 		}
 		if ( 'github' === $new['source'] || '' !== $new['url'] ) {
 			self::manifest( true ); // بلافاصله بررسی شود تا «وضعیت» نتیجه واقعی را نشان دهد
@@ -1035,7 +1043,7 @@ final class Kashi_Updater {
 		$m   = get_site_transient( self::CACHE );
 		$new = is_array( $m ) && ! empty( $m['version'] ) && version_compare( $m['version'], self::$version, '>' );
 		?>
-		<div class="wrap kashi-settings">
+		<div class="wrap kashi-settings" dir="<?php echo esc_attr( Kashi::dir() ); ?>">
 			<style>
 				.kashi-settings h1{display:flex;align-items:center;gap:10px}
 				.kashi-settings .kashi-card{background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:22px 24px;margin:18px 0;max-width:820px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
@@ -1051,7 +1059,7 @@ final class Kashi_Updater {
 				.kashi-settings .kashi-zip{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 				.kashi-settings .kashi-actions{display:flex;gap:8px;margin-top:6px}
 			</style>
-			<h1>تنظیمات کاشی <span class="kashi-pill">نسخه <?php echo esc_html( self::$version ); ?></span></h1>
+			<h1><?php echo esc_html( Kashi::t( 'تنظیمات کاشی' ) ); ?> <span class="kashi-pill"><?php echo esc_html( Kashi::t( 'نسخه' ) ); ?> <?php echo esc_html( self::$version ); ?></span></h1>
 			<?php
 			if ( isset( $_GET['kashi_saved'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				self::$inline = false;
@@ -1065,138 +1073,167 @@ final class Kashi_Updater {
 				<?php wp_nonce_field( 'kashi_save_settings' ); ?>
 
 				<div class="kashi-card">
-					<h2>آپدیت خودکار</h2>
-					<p class="desc">نسخه‌های جدید کاشی مثل بقیه افزونه‌ها در «افزونه‌ها» با دکمه «به‌روزرسانی» نمایش داده می‌شوند.</p>
+					<h2><?php echo esc_html( Kashi::t( 'زبان افزونه' ) ); ?></h2>
+					<p class="desc"><?php echo esc_html( Kashi::t( 'همه منوها، پیام‌ها، ویرایشگر، تاریخ و ساعت به این زبان نمایش داده می‌شوند.' ) ); ?></p>
 					<div class="kashi-row">
-						<label>منبع آپدیت</label>
+						<label for="kashi_lang"><?php echo esc_html( Kashi::t( 'زبان' ) ); ?></label>
 						<div>
-							<label style="display:block;margin-bottom:6px"><input type="radio" name="kashi_source" value="github" <?php checked( $s['source'], 'github' ); ?> onchange="kashiSrc()"> <b>گیت‌هاب</b> (پیشنهادی — بدون سرور اضافه)</label>
-							<label style="display:block"><input type="radio" name="kashi_source" value="server" <?php checked( $s['source'], 'server' ); ?> onchange="kashiSrc()"> سرور آپدیت خودم</label>
+							<select id="kashi_lang" name="kashi_lang">
+								<?php $cur = (string) get_option( 'kashi_lang', 'auto' ); ?>
+								<option value="auto" <?php selected( $cur, 'auto' ); ?>><?php echo esc_html( Kashi::t( 'خودکار (زبان پیشخوان)' ) ); ?></option>
+								<?php foreach ( Kashi::LANGS as $code => $l ) : ?>
+									<option value="<?php echo esc_attr( $code ); ?>" <?php selected( $cur, $code ); ?>><?php echo esc_html( $l[0] ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+					</div>
+					<div class="kashi-row">
+						<label for="kashi_calendar"><?php echo esc_html( Kashi::t( 'تقویم' ) ); ?></label>
+						<div>
+							<?php $cal = (string) get_option( 'kashi_calendar', 'auto' ); ?>
+							<select id="kashi_calendar" name="kashi_calendar">
+								<option value="auto" <?php selected( $cal, 'auto' ); ?>><?php echo esc_html( Kashi::t( 'خودکار (شمسی برای فارسی، میلادی برای بقیه)' ) ); ?></option>
+								<option value="jalali" <?php selected( $cal, 'jalali' ); ?>><?php echo esc_html( Kashi::t( 'شمسی' ) ); ?></option>
+								<option value="gregorian" <?php selected( $cal, 'gregorian' ); ?>><?php echo esc_html( Kashi::t( 'میلادی' ) ); ?></option>
+							</select>
+							<p class="description"><?php echo esc_html( Kashi::t( 'منطقه زمانی زمان‌بندی‌ها:' ) ); ?> <code class="ltr"><?php echo esc_html( Kashi::timezone() ); ?></code> — <?php echo esc_html( Kashi::t( 'از «تنظیمات ← عمومی» وردپرس عوض می‌شود.' ) ); ?></p>
+						</div>
+					</div>
+				</div>
+
+				<div class="kashi-card">
+					<h2><?php echo esc_html( Kashi::t( 'آپدیت خودکار' ) ); ?></h2>
+					<p class="desc"><?php echo esc_html( Kashi::t( 'نسخه‌های جدید کاشی مثل بقیه افزونه‌ها در «افزونه‌ها» با دکمه «به‌روزرسانی» نمایش داده می‌شوند.' ) ); ?></p>
+					<div class="kashi-row">
+						<label><?php echo esc_html( Kashi::t( 'منبع آپدیت' ) ); ?></label>
+						<div>
+							<label style="display:block;margin-bottom:6px"><input type="radio" name="kashi_source" value="github" <?php checked( $s['source'], 'github' ); ?> onchange="kashiSrc()"> <b><?php echo esc_html( Kashi::t( 'گیت‌هاب' ) ); ?></b> <?php echo esc_html( Kashi::t( '(پیشنهادی — بدون سرور اضافه)' ) ); ?></label>
+							<label style="display:block"><input type="radio" name="kashi_source" value="server" <?php checked( $s['source'], 'server' ); ?> onchange="kashiSrc()"> <?php echo esc_html( Kashi::t( 'سرور آپدیت خودم' ) ); ?></label>
 						</div>
 					</div>
 					<div class="kashi-row kashi-src-github">
-						<label for="kashi_gh_repo">مخزن گیت‌هاب</label>
+						<label for="kashi_gh_repo"><?php echo esc_html( Kashi::t( 'مخزن گیت‌هاب' ) ); ?></label>
 						<div><input type="text" class="ltr" id="kashi_gh_repo" name="kashi_gh_repo" value="<?php echo esc_attr( $s['gh_repo'] ); ?>" style="max-width:320px"></div>
 					</div>
 					<div class="kashi-row kashi-src-github">
-						<label for="kashi_gh_token">توکن گیت‌هاب</label>
+						<label for="kashi_gh_token"><?php echo esc_html( Kashi::t( 'توکن گیت‌هاب' ) ); ?></label>
 						<div>
 							<input type="password" class="ltr" id="kashi_gh_token" name="kashi_gh_token" value="<?php echo esc_attr( $s['gh_token'] ); ?>" autocomplete="off" <?php disabled( defined( 'KASHI_GITHUB_TOKEN' ) && KASHI_GITHUB_TOKEN ); ?>>
-							<p class="description">برای مخزن خصوصی لازم است. در گیت‌هاب: Settings ← Developer settings ← Fine-grained tokens ← فقط همین مخزن، دسترسی <b>Contents: Read-only</b>. اگر مخزن عمومی باشد خالی بگذارید.</p>
+							<p class="description"><?php echo esc_html( Kashi::t( 'برای مخزن خصوصی لازم است. در گیت‌هاب: Settings ← Developer settings ← Fine-grained tokens ← فقط همین مخزن، دسترسی' ) ); ?> <b>Contents: Read-only</b><?php echo esc_html( Kashi::t( '. اگر مخزن عمومی باشد خالی بگذارید.' ) ); ?></p>
 						</div>
 					</div>
 					<div class="kashi-row kashi-src-server">
-						<label for="kashi_url">آدرس سرور آپدیت</label>
+						<label for="kashi_url"><?php echo esc_html( Kashi::t( 'آدرس سرور آپدیت' ) ); ?></label>
 						<div>
 							<input type="url" class="ltr" id="kashi_url" name="kashi_url" value="<?php echo esc_attr( $s['url'] ); ?>" placeholder="https://your-site.com/wp-json/kashi/v1/update" <?php disabled( defined( 'KASHI_UPDATE_URL' ) && KASHI_UPDATE_URL ); ?>>
-							<p class="description">آدرسی که در «سرور آپدیت» سایت اصلی‌تان نمایش داده می‌شود، یا آدرس یک فایل update.json.</p>
+							<p class="description"><?php echo esc_html( Kashi::t( 'آدرسی که در «سرور آپدیت» سایت اصلی‌تان نمایش داده می‌شود، یا آدرس یک فایل update.json.' ) ); ?></p>
 						</div>
 					</div>
 					<div class="kashi-row kashi-src-server">
-						<label for="kashi_key">کلید دسترسی</label>
-						<div><input type="text" class="ltr" id="kashi_key" name="kashi_key" value="<?php echo esc_attr( $s['key'] ); ?>" autocomplete="off"><p class="description">اگر روی سرور کلید گذاشته‌اید، همان را اینجا بنویسید.</p></div>
+						<label for="kashi_key"><?php echo esc_html( Kashi::t( 'کلید دسترسی' ) ); ?></label>
+						<div><input type="text" class="ltr" id="kashi_key" name="kashi_key" value="<?php echo esc_attr( $s['key'] ); ?>" autocomplete="off"><p class="description"><?php echo esc_html( Kashi::t( 'اگر روی سرور کلید گذاشته‌اید، همان را اینجا بنویسید.' ) ); ?></p></div>
 					</div>
 					<div class="kashi-row kashi-src-server">
-						<label for="kashi_pubkey">کلید عمومی امضا</label>
+						<label for="kashi_pubkey"><?php echo esc_html( Kashi::t( 'کلید عمومی امضا' ) ); ?></label>
 						<div>
 							<input type="text" class="ltr" id="kashi_pubkey" name="kashi_pubkey" value="<?php echo esc_attr( $s['pubkey'] ); ?>" autocomplete="off" <?php disabled( defined( 'KASHI_UPDATE_PUBKEY' ) && KASHI_UPDATE_PUBKEY ); ?>>
 							<?php if ( '' !== self::pinned_key() ) : ?>
-								<p><span class="kashi-pill ok">امضای دیجیتال فعال: فقط نسخه‌های امضاشده نصب می‌شوند</span></p>
+								<p><span class="kashi-pill ok"><?php echo esc_html( Kashi::t( 'امضای دیجیتال فعال: فقط نسخه‌های امضاشده نصب می‌شوند' ) ); ?></span></p>
 							<?php else : ?>
-								<p class="description" style="color:#b32d2e">هنوز تنظیم نشده. کلید عمومی را از «سرور آپدیت» سایت اصلی‌تان کپی کنید تا هیچ نسخه امضانشده‌ای نصب نشود (حتی اگر سرور هک شود).</p>
+								<p class="description" style="color:#b32d2e"><?php echo esc_html( Kashi::t( 'هنوز تنظیم نشده. کلید عمومی را از «سرور آپدیت» سایت اصلی‌تان کپی کنید تا هیچ نسخه امضانشده‌ای نصب نشود (حتی اگر سرور هک شود).' ) ); ?></p>
 							<?php endif; ?>
 						</div>
 					</div>
 					<div class="kashi-row">
-						<label>وضعیت</label>
+						<label><?php echo esc_html( Kashi::t( 'وضعیت' ) ); ?></label>
 						<div>
 							<?php if ( $new ) : ?>
-								<span class="kashi-pill new">نسخه <?php echo esc_html( $m['version'] ); ?> آماده نصب است</span>
-								<a class="button button-primary" href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>">رفتن به افزونه‌ها</a>
+								<span class="kashi-pill new"><?php echo esc_html( Kashi::t( 'نسخه' ) ); ?> <?php echo esc_html( $m['version'] ); ?> <?php echo esc_html( Kashi::t( 'آماده نصب است' ) ); ?></span>
+								<a class="button button-primary" href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>"><?php echo esc_html( Kashi::t( 'رفتن به افزونه‌ها' ) ); ?></a>
 							<?php elseif ( $self_server ) : ?>
-								<span class="kashi-pill ok">این سایت خودش سرور آپدیت است</span>
-								<p class="description">روی سایت سرور، آدرس سرور لازم نیست و آپدیتی هم نمایش داده نمی‌شود (همین نسخه را منتشر می‌کند). این آدرس را در سایت‌های <b>دیگر</b> وارد کنید. برای به‌روز کردن خود این سایت، zip نسخه جدید را از «افزونه‌ها ← افزودن ← بارگذاری» نصب کنید.</p>
+								<span class="kashi-pill ok"><?php echo esc_html( Kashi::t( 'این سایت خودش سرور آپدیت است' ) ); ?></span>
+								<p class="description"><?php echo esc_html( Kashi::t( 'روی سایت سرور، آدرس سرور لازم نیست و آپدیتی هم نمایش داده نمی‌شود (همین نسخه را منتشر می‌کند). این آدرس را در سایت‌های' ) ); ?> <b><?php echo esc_html( Kashi::t( 'دیگر' ) ); ?></b> <?php echo esc_html( Kashi::t( 'وارد کنید. برای به‌روز کردن خود این سایت، zip نسخه جدید را از «افزونه‌ها ← افزودن ← بارگذاری» نصب کنید.' ) ); ?></p>
 							<?php elseif ( $s['last_status'] ) : ?>
 								<span class="kashi-pill <?php echo is_array( $m ) && ! empty( $m['version'] ) ? 'ok' : ''; ?>"><?php echo esc_html( $s['last_status'] ); ?></span>
 							<?php else : ?>
-								<span class="kashi-pill">هنوز بررسی نشده</span>
+								<span class="kashi-pill"><?php echo esc_html( Kashi::t( 'هنوز بررسی نشده' ) ); ?></span>
 							<?php endif; ?>
 							<?php if ( is_array( $m ) && ! empty( $m['version'] ) ) : ?>
-								<p class="description">نسخه نصب‌شده: <b><?php echo esc_html( self::$version ); ?></b> — نسخه منتشرشده: <b><?php echo esc_html( $m['version'] ); ?></b></p>
+								<p class="description"><?php echo esc_html( Kashi::t( 'نسخه نصب‌شده:' ) ); ?> <b><?php echo esc_html( self::$version ); ?></b> <?php echo esc_html( Kashi::t( '— نسخه منتشرشده:' ) ); ?> <b><?php echo esc_html( $m['version'] ); ?></b></p>
 							<?php endif; ?>
 							<?php if ( $s['last_check'] ) : ?>
-								<p class="description">آخرین بررسی: <?php echo esc_html( human_time_diff( (int) $s['last_check'], time() ) ); ?> پیش</p>
+								<p class="description"><?php echo esc_html( Kashi::t( 'آخرین بررسی:' ) ); ?> <?php echo esc_html( human_time_diff( (int) $s['last_check'], time() ) ); ?> <?php echo esc_html( Kashi::t( 'پیش' ) ); ?></p>
 							<?php endif; ?>
-							<p><a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_check_updates' ), 'kashi_check_updates' ) ); ?>">بررسی آپدیت الان</a></p>
+							<p><a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_check_updates' ), 'kashi_check_updates' ) ); ?>"><?php echo esc_html( Kashi::t( 'بررسی آپدیت الان' ) ); ?></a></p>
 						</div>
 					</div>
 				</div>
 
 				<details class="kashi-card" <?php echo ! empty( $s['server'] ) ? 'open' : ''; ?>>
-					<summary style="cursor:pointer;font-weight:600;font-size:15px">پیشرفته: سرور آپدیت اختصاصی (فقط اگر گیت‌هاب استفاده نمی‌کنید)</summary>
-					<h2 style="margin-top:14px">سرور آپدیت (فقط روی سایت اصلی)</h2>
-					<p class="desc">این سایت را منبع آپدیت سایت‌های دیگر کنید. هر بار نسخه جدید آماده شد، فقط فایل zip آن را اینجا انتخاب و ذخیره کنید؛ نسخه و امضا خودکار خوانده می‌شوند و همه سایت‌ها آپدیت را می‌بینند.</p>
+					<summary style="cursor:pointer;font-weight:600;font-size:15px"><?php echo esc_html( Kashi::t( 'پیشرفته: سرور آپدیت اختصاصی (فقط اگر گیت‌هاب استفاده نمی‌کنید)' ) ); ?></summary>
+					<h2 style="margin-top:14px"><?php echo esc_html( Kashi::t( 'سرور آپدیت (فقط روی سایت اصلی)' ) ); ?></h2>
+					<p class="desc"><?php echo esc_html( Kashi::t( 'این سایت را منبع آپدیت سایت‌های دیگر کنید. هر بار نسخه جدید آماده شد، فقط فایل zip آن را اینجا انتخاب و ذخیره کنید؛ نسخه و امضا خودکار خوانده می‌شوند و همه سایت‌ها آپدیت را می‌بینند.' ) ); ?></p>
 					<div class="kashi-row">
-						<label for="kashi_server">فعال</label>
-						<div><label><input type="checkbox" id="kashi_server" name="kashi_server" value="1" <?php checked( ! empty( $s['server'] ) ); ?>> این سایت سرور آپدیت کاشی باشد</label></div>
+						<label for="kashi_server"><?php echo esc_html( Kashi::t( 'فعال' ) ); ?></label>
+						<div><label><input type="checkbox" id="kashi_server" name="kashi_server" value="1" <?php checked( ! empty( $s['server'] ) ); ?>> <?php echo esc_html( Kashi::t( 'این سایت سرور آپدیت کاشی باشد' ) ); ?></label></div>
 					</div>
 					<?php if ( ! empty( $s['server'] ) ) : ?>
 					<div class="kashi-row">
-						<label>آدرس برای سایت‌های دیگر</label>
-						<div><code class="copy" title="کلیک برای کپی" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( self::server_url() ); ?></code></div>
+						<label><?php echo esc_html( Kashi::t( 'آدرس برای سایت‌های دیگر' ) ); ?></label>
+						<div><code class="copy" title="<?php echo esc_attr( Kashi::t( 'کلیک برای کپی' ) ); ?>" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( self::server_url() ); ?></code></div>
 					</div>
 					<?php endif; ?>
 					<div class="kashi-row">
-						<label>فایل نسخه (zip)</label>
+						<label><?php echo esc_html( Kashi::t( 'فایل نسخه (zip)' ) ); ?></label>
 						<div>
 							<div class="kashi-zip">
 								<input type="hidden" id="kashi_zip" name="kashi_zip" value="<?php echo (int) $r['attachment']; ?>">
-								<button type="button" class="button" id="kashi_pick">انتخاب فایل zip از رسانه</button>
+								<button type="button" class="button" id="kashi_pick"><?php echo esc_html( Kashi::t( 'انتخاب فایل zip از رسانه' ) ); ?></button>
 								<span id="kashi_zip_name" class="ltr"><?php echo $r['package'] ? esc_html( wp_basename( $r['package'] ) ) : '—'; ?></span>
 							</div>
 							<?php if ( $r['version'] ) : ?>
-								<p><span class="kashi-pill ok">نسخه منتشرشده: <?php echo esc_html( $r['version'] ); ?></span></p>
+								<p><span class="kashi-pill ok"><?php echo esc_html( Kashi::t( 'نسخه منتشرشده:' ) ); ?> <?php echo esc_html( $r['version'] ); ?></span></p>
 								<p class="description ltr">SHA-256: <?php echo esc_html( $r['sha256'] ); ?></p>
 							<?php endif; ?>
 						</div>
 					</div>
 					<div class="kashi-row">
-						<label for="kashi_version">شماره نسخه</label>
-						<div><input type="text" class="ltr" id="kashi_version" name="kashi_version" value="" placeholder="<?php echo esc_attr( $r['version'] ? $r['version'] : 'خودکار از فایل' ); ?>" style="max-width:160px"><p class="description">خالی بگذارید تا از داخل فایل خوانده شود.</p></div>
+						<label for="kashi_version"><?php echo esc_html( Kashi::t( 'شماره نسخه' ) ); ?></label>
+						<div><input type="text" class="ltr" id="kashi_version" name="kashi_version" value="" placeholder="<?php echo esc_attr( $r['version'] ? $r['version'] : Kashi::t( 'خودکار از فایل' ) ); ?>" style="max-width:160px"><p class="description"><?php echo esc_html( Kashi::t( 'خالی بگذارید تا از داخل فایل خوانده شود.' ) ); ?></p></div>
 					</div>
 					<div class="kashi-row">
-						<label for="kashi_changelog">تغییرات این نسخه</label>
+						<label for="kashi_changelog"><?php echo esc_html( Kashi::t( 'تغییرات این نسخه' ) ); ?></label>
 						<div><textarea id="kashi_changelog" name="kashi_changelog" rows="4"><?php echo esc_textarea( $r['changelog'] ); ?></textarea></div>
 					</div>
 					<div class="kashi-row">
-						<label for="kashi_tested">تست‌شده تا وردپرس</label>
+						<label for="kashi_tested"><?php echo esc_html( Kashi::t( 'تست‌شده تا وردپرس' ) ); ?></label>
 						<div><input type="text" class="ltr" id="kashi_tested" name="kashi_tested" value="<?php echo esc_attr( $r['tested'] ? $r['tested'] : get_bloginfo( 'version' ) ); ?>" style="max-width:120px"></div>
 					</div>
 					<div class="kashi-row">
-						<label>امضای دیجیتال</label>
+						<label><?php echo esc_html( Kashi::t( 'امضای دیجیتال' ) ); ?></label>
 						<div>
 							<?php if ( empty( $s['sign_pub'] ) ) : ?>
-								<p class="description">با امضای دیجیتال، سایت‌ها فقط نسخه‌هایی را نصب می‌کنند که با کلید خصوصی شما امضا شده باشند. کلید خصوصی فقط یک بار دانلود می‌شود و هیچ‌جا ذخیره نمی‌شود.</p>
-								<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>">ساخت کلید امضا و دانلود</a>
+								<p class="description"><?php echo esc_html( Kashi::t( 'با امضای دیجیتال، سایت‌ها فقط نسخه‌هایی را نصب می‌کنند که با کلید خصوصی شما امضا شده باشند. کلید خصوصی فقط یک بار دانلود می‌شود و هیچ‌جا ذخیره نمی‌شود.' ) ); ?></p>
+								<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>"><?php echo esc_html( Kashi::t( 'ساخت کلید امضا و دانلود' ) ); ?></a>
 							<?php else : ?>
-								<p>کلید عمومی (در همه سایت‌ها، فیلد «کلید عمومی امضا»):</p>
-								<p><code class="copy" title="کلیک برای کپی" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( $s['sign_pub'] ); ?></code></p>
+								<p><?php echo esc_html( Kashi::t( 'کلید عمومی (در همه سایت‌ها، فیلد «کلید عمومی امضا»):' ) ); ?></p>
+								<p><code class="copy" title="<?php echo esc_attr( Kashi::t( 'کلیک برای کپی' ) ); ?>" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( $s['sign_pub'] ); ?></code></p>
 								<?php
 								$signed = ! empty( $r['signature'] ) && isset( $r['signed_for'] ) && $r['version'] && self::sign_message( $r['version'], $r['sha256'] ) === $r['signed_for'];
 								?>
-								<p><?php echo $signed ? '<span class="kashi-pill ok">نسخه فعلی امضا شده است</span>' : '<span class="kashi-pill" style="background:#fcf0e3;color:#8a4b00">نسخه فعلی امضا ندارد</span>'; ?></p>
+								<p><?php echo $signed ? '<span class="kashi-pill ok">' . Kashi::t( 'نسخه فعلی امضا شده است' ) . '</span>' : '<span class="kashi-pill" style="background:#fcf0e3;color:#8a4b00">' . Kashi::t( 'نسخه فعلی امضا ندارد' ) . '</span>'; ?></p>
 								<?php if ( $signed ) : ?>
-									<p class="description">امضای این نسخه برای «آپدیت آفلاین» (همراه فایل zip به سایت‌ها بدهید):</p>
-									<p><code class="copy" title="کلیک برای کپی" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( $r['signature'] ); ?></code></p>
+									<p class="description"><?php echo esc_html( Kashi::t( 'امضای این نسخه برای «آپدیت آفلاین» (همراه فایل zip به سایت‌ها بدهید):' ) ); ?></p>
+									<p><code class="copy" title="<?php echo esc_attr( Kashi::t( 'کلیک برای کپی' ) ); ?>" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent)"><?php echo esc_html( $r['signature'] ); ?></code></p>
 								<?php endif; ?>
-								<p style="margin-top:10px"><input type="password" class="ltr" name="kashi_sign_secret" value="" autocomplete="off" placeholder="کلید خصوصی امضا را اینجا بچسبانید (ذخیره نمی‌شود)" style="width:100%;max-width:520px"></p>
-								<p class="description">هنگام انتشار هر نسخه جدید، کلید خصوصی را بچسبانید و ذخیره کنید. <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>" onclick="return confirm('با ساخت کلید جدید، باید کلید عمومی را در همه سایت‌ها عوض کنید. ادامه؟');">ساخت کلید جدید</a></p>
+								<p style="margin-top:10px"><input type="password" class="ltr" name="kashi_sign_secret" value="" autocomplete="off" placeholder="<?php echo esc_attr( Kashi::t( 'کلید خصوصی امضا را اینجا بچسبانید (ذخیره نمی‌شود)' ) ); ?>" style="width:100%;max-width:520px"></p>
+								<p class="description"><?php echo esc_html( Kashi::t( 'هنگام انتشار هر نسخه جدید، کلید خصوصی را بچسبانید و ذخیره کنید.' ) ); ?> <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=kashi_gen_keys' ), 'kashi_gen_keys' ) ); ?>" onclick="return confirm(<?php echo esc_attr( wp_json_encode( Kashi::t( 'با ساخت کلید جدید، باید کلید عمومی را در همه سایت‌ها عوض کنید. ادامه؟' ) ) ); ?>);"><?php echo esc_html( Kashi::t( 'ساخت کلید جدید' ) ); ?></a></p>
 							<?php endif; ?>
 						</div>
 					</div>
 					<div class="kashi-row">
-						<label for="kashi_server_key">کلید دسترسی (اختیاری)</label>
-						<div><input type="text" class="ltr" id="kashi_server_key" name="kashi_server_key" value="<?php echo esc_attr( $s['server_key'] ); ?>" autocomplete="off"><p class="description">اگر بگذارید، فقط سایت‌هایی که این کلید را دارند آپدیت را می‌بینند.</p></div>
+						<label for="kashi_server_key"><?php echo esc_html( Kashi::t( 'کلید دسترسی (اختیاری)' ) ); ?></label>
+						<div><input type="text" class="ltr" id="kashi_server_key" name="kashi_server_key" value="<?php echo esc_attr( $s['server_key'] ); ?>" autocomplete="off"><p class="description"><?php echo esc_html( Kashi::t( 'اگر بگذارید، فقط سایت‌هایی که این کلید را دارند آپدیت را می‌بینند.' ) ); ?></p></div>
 					</div>
 				</details>
 
@@ -1204,31 +1241,31 @@ final class Kashi_Updater {
 				if ( class_exists( 'Kashi_Net' ) ) {
 					Kashi_Net::card();
 				}
-				submit_button( 'ذخیره تنظیمات' );
+				submit_button( Kashi::t( 'ذخیره تنظیمات' ) );
 				?>
 			</form>
 
 			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="kashi-card">
 				<input type="hidden" name="action" value="kashi_offline_update">
 				<?php wp_nonce_field( 'kashi_offline_update' ); ?>
-				<h2>آپدیت آفلاین</h2>
-				<p class="desc">وقتی سرور آپدیت در دسترس نیست (مثلاً در قطعی اینترنت بین‌الملل)، فایل zip نسخه جدید را مستقیم بارگذاری کنید. همان بررسی‌های امنیتی آپدیت خودکار انجام می‌شود و داده‌ها و صفحه‌ها دست نمی‌خورند.</p>
+				<h2><?php echo esc_html( Kashi::t( 'آپدیت آفلاین' ) ); ?></h2>
+				<p class="desc"><?php echo esc_html( Kashi::t( 'وقتی سرور آپدیت در دسترس نیست (مثلاً در قطعی اینترنت بین‌الملل)، فایل zip نسخه جدید را مستقیم بارگذاری کنید. همان بررسی‌های امنیتی آپدیت خودکار انجام می‌شود و داده‌ها و صفحه‌ها دست نمی‌خورند.' ) ); ?></p>
 				<div class="kashi-row">
-					<label for="kashi_offline_zip">فایل zip</label>
+					<label for="kashi_offline_zip"><?php echo esc_html( Kashi::t( 'فایل zip' ) ); ?></label>
 					<div><input type="file" id="kashi_offline_zip" name="kashi_offline_zip" accept=".zip,application/zip" required></div>
 				</div>
 				<?php if ( '' !== self::pinned_key() ) : ?>
 				<div class="kashi-row">
-					<label for="kashi_offline_sig">امضای دیجیتال نسخه</label>
-					<div><input type="text" class="ltr" id="kashi_offline_sig" name="kashi_offline_sig" autocomplete="off" required><p class="description">در «سرور آپدیت» سایت اصلی، کنار همان نسخه نمایش داده می‌شود. بدون امضای معتبر نصب نمی‌شود.</p></div>
+					<label for="kashi_offline_sig"><?php echo esc_html( Kashi::t( 'امضای دیجیتال نسخه' ) ); ?></label>
+					<div><input type="text" class="ltr" id="kashi_offline_sig" name="kashi_offline_sig" autocomplete="off" required><p class="description"><?php echo esc_html( Kashi::t( 'در «سرور آپدیت» سایت اصلی، کنار همان نسخه نمایش داده می‌شود. بدون امضای معتبر نصب نمی‌شود.' ) ); ?></p></div>
 				</div>
 				<?php else : ?>
 				<div class="kashi-row">
-					<label>تأیید</label>
-					<div><label><input type="checkbox" name="kashi_offline_trust" value="1" required> این فایل را از منبع مطمئن (خودم) گرفته‌ام</label><p class="description">پیشنهاد: «کلید عمومی امضا» را بالاتر تنظیم کنید تا فقط فایل‌های امضاشده نصب شوند.</p></div>
+					<label><?php echo esc_html( Kashi::t( 'تأیید' ) ); ?></label>
+					<div><label><input type="checkbox" name="kashi_offline_trust" value="1" required> <?php echo esc_html( Kashi::t( 'این فایل را از منبع مطمئن (خودم) گرفته‌ام' ) ); ?></label><p class="description"><?php echo esc_html( Kashi::t( 'پیشنهاد: «کلید عمومی امضا» را بالاتر تنظیم کنید تا فقط فایل‌های امضاشده نصب شوند.' ) ); ?></p></div>
 				</div>
 				<?php endif; ?>
-				<p><button type="submit" class="button button-primary">بارگذاری و نصب</button></p>
+				<p><button type="submit" class="button button-primary"><?php echo esc_html( Kashi::t( 'بارگذاری و نصب' ) ); ?></button></p>
 			</form>
 			<script>
 			function kashiSrc() {
@@ -1241,9 +1278,9 @@ final class Kashi_Updater {
 				var b = document.getElementById('kashi_pick'), frame;
 				if (!b) { return; }
 				b.addEventListener('click', function () {
-					if (!window.wp || !wp.media) { alert('کتابخانه رسانه بارگذاری نشد.'); return; }
+					if (!window.wp || !wp.media) { alert(T('کتابخانه رسانه بارگذاری نشد.')); return; }
 					if (!frame) {
-						frame = wp.media({ title: 'انتخاب فایل zip کاشی', button: { text: 'انتخاب' }, multiple: false, library: { type: 'application/zip' } });
+						frame = wp.media({ title: T('انتخاب فایل zip کاشی'), button: { text: T('انتخاب') }, multiple: false, library: { type: 'application/zip' } });
 						frame.on('select', function () {
 							var a = frame.state().get('selection').first().toJSON();
 							document.getElementById('kashi_zip').value = a.id;

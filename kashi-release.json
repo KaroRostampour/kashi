@@ -1,0 +1,29 @@
+{
+    "name": "kashi",
+    "version": "2.0.0",
+    "files": {
+        "README.md": "c98d8a28731ff891f647d8d0bc869191e18f3eda0f2f0db6ac2ba43e2dd38364",
+        "assets/ICONS-LICENSE.txt": "252e6125654fb2e4bb37a4e7e6fde691705e03cde34fbcaf31d6138dcca958af",
+        "assets/fonts/OFL.txt": "17e355067c8284f47743a1ee3b1ef7ff684ff0601eda357f9353b10b3016ab31",
+        "assets/fonts/vazirmatn.woff2": "4e3fa217d38fdafc1fea4414ceb58ca5e662cf0ab5fa735a8c8c20e8b42cad92",
+        "assets/icons.json": "5298d90d830f4b3b017dd850256cafb5f6fddfa374ad15adca1d180ed3d36d7b",
+        "assets/kr-logo.svg": "3c67c9c45f17ca6967b354ed7482bd59e9f55251dd4e5b44c9ba6ba413c5d943",
+        "includes/class-kashi-about.php": "c40145eca600a4ff98ff542c3d8379f48f609b080e7f23929e86694636b1aa37",
+        "includes/class-kashi-net.php": "93a0a75765d00f684e43830446cb3faaf1628446df371469cd125108749def61",
+        "includes/class-kashi-updater.php": "fa9d5f8065a886dede1fb3c377854510670bfee811c2b4b8d9bebb927ca97eb0",
+        "kashi.php": "5e9d68871f081272975bd8bbf3de82a1d36eeaabca6d05c88dcc7a29299762af",
+        "languages/ar.json": "ae6b7951f7c45838da26b6daa047ddf3fee44b583e2150039e14e148dab0621b",
+        "languages/ckb.json": "b857e87888cc02ef7b347ef4188a1af648a619fdaacfc223838db63a3bf2b366",
+        "languages/de.json": "2174148e981ae42b50c804ed3061766f02b162ac62281634a592cc3be331d661",
+        "languages/en.json": "ff31bb5b3a998135ad0e095813bec3109655b7dc82caf6d7b9c31a8849728ec9",
+        "languages/es.json": "526745122c3691087a344ef184aec9bf7f68743477969c185aa73a17ad7fa646",
+        "languages/fr.json": "ca2651f6f1f2404c83232534ebbf5535162b4db676a0a3ed873b715c50f854e5",
+        "languages/ru.json": "42c06d8e3ea6ca0e4141122ac9e2227b96de984983437d3184d69142c54ed060",
+        "languages/tr.json": "6ad021f6e44bd9b9239e090f97ff862fc44ac178db33ae5cddf3d0de90a5993e",
+        "languages/zh.json": "ab02889a69540ed0ce302ff113918f2f512420383505b02e214e843c0b47fc42",
+        "readme.txt": "fd0a5c64cff0a1b28f84ee7bcbe9afa4f5bf8e42b436a0ea5d01d45b2f2f98bf",
+        "templates/canvas.php": "e918072f2a2b2b8b0835cdaeadf4322376c4ce795254d3686c1290a636ce8da0",
+        "templates/full-width.php": "a43a484639d1e14e3b9f271f31993f97ef683e349a90f635f4858a3ed7adab98"
+    },
+    "sig": "hLaUehx+nLZHdjcwma1fh1d8JjvKmLZdVkFlXx7EyH6hoFZHfBZJ7cV+oq15YXudYw3WEbHuNUR8Kydhal50Cg=="
+}

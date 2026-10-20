@@ -1,50 +1,153 @@
-# کاشی — Kashi
+<div align="center">
 
-صفحه‌ساز کدمحور و سبک برای وردپرس: صفحه را کاشی‌به‌کاشی با کد خودتان (یا کمک هوش مصنوعی) بسازید و همان لحظه نتیجه را ببینید.
+# Kashi · کاشی
 
-**سازنده:** Karorostampoor@gmail.com
-**نسخه فعلی:** 1.6.1
+**The code-first page builder for WordPress.**
+Build every page tile by tile with your own HTML, CSS and JavaScript — written by hand or by AI — and see it live inside your real theme.
 
-## امکانات
+![Version](https://img.shields.io/badge/version-2.0.0-6c5ce7)
+![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
+![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4)
+![License](https://img.shields.io/badge/license-GPL--2.0--or--later-2ea44f)
+![Languages](https://img.shields.io/badge/languages-10-ff9f43)
 
-- ویرایشگر زنده تمام‌صفحه با پیش‌نمایش داخل قالب واقعی سایت (دسکتاپ / تبلت / موبایل)
-- ساخت صفحه بخش‌به‌بخش؛ CSS هر کاشی فقط روی خودش اثر دارد
-- نمایش هر بخش فقط در دسکتاپ / لپ‌تاپ / تبلت / موبایل (یا همه‌جا)
-- زمان‌بندی انتشار و پایان نمایش هر بخش (تاریخ شمسی، ساعت تهران)
-- ویرایش مستقیم متن، لینک، تصویر، رنگ و آیکون داخل پیش‌نمایش، بدون دست زدن به کد
-- کتابخانه ۳۱۱ آیکون (۱۶۷ آیکون محصول + Lucide + برندها) با جستجوی فارسی
-- هدر و فوتر سایت با کاشی، سازگار با هر قالب، با شرط نمایش
-- طرح‌بندی تمام‌عرض / بوم خالی / پیش‌فرض قالب
-- کتابخانه کاشی (کپی یا لینک‌شده) و تاریخچه نسخه‌ها
-- سئو: همگام‌سازی با Rank Math / Yoast، CSS و اسکیما در `<head>`، تصاویر lazy، بررسی‌کننده سئوی زنده
-- آپدیت خودکار از سرور خودتان با SHA-256 و امضای دیجیتال Ed25519
-- انتقال کاشی‌ها و صفحه‌ها بین سایت‌ها (خروجی / ورودی)
-- حالت اینترنت ملی، آپدیت آفلاین امضاشده، فونت وزیرمتن محلی
-- بدون هیچ CSS/JS سراسری
+[English](#english) · [فارسی](#فارسی)
 
-## ساختار
+</div>
+
+---
+
+## English
+
+### Why Kashi?
+
+Page builders like Elementor wrap a few lines of design in megabytes of CSS, JavaScript and nested `div`s. Kashi takes the opposite route: **you bring the code, Kashi gives you a fast, comfortable place to put it.**
+
+Each part of a page is a *tile* — a self-contained piece of HTML, CSS and JS. Tiles stack into a page. Nothing global is loaded; a page ships only the code it actually uses.
+
+It is built for designers who already write code, or who let ChatGPT, Claude or any other AI write it for them: paste the result, see it instantly, tweak it visually, publish.
+
+### Highlights
+
+| | |
+|---|---|
+| ⚡ **Live editor** | Full-screen editor with a real-theme preview at true device widths (1440 / 1280 / 768 / 390). |
+| 🧩 **Tiles** | Paste a whole HTML document or bare CSS/JS — Kashi detects the type and puts every part in the right place. Each tile's CSS is scoped to itself. |
+| 🎨 **Direct edit** | Click any text, link, image, color or icon in the preview and change it without touching code. |
+| 📐 **Spacing panel** | Elementor-style margin & padding with linked sides, units (px, %, em, rem, vh, vw) and separate values per device; background, corner radius, min-height, CSS ID and class. |
+| 📱 **Per-device tiles** | Show a tile only on desktop, laptop, tablet or mobile — e.g. one hero for desktop and another for mobile. Duplicate H1s are fixed automatically for SEO. |
+| ⏰ **Scheduled publishing** | Publish a tile at a set time and optionally hide it later (sales, campaigns). Works with LiteSpeed and other caches without manual purging. |
+| 🧱 **Header & footer builder** | Replace the theme header/footer with tiles, with display conditions. Works with any theme. |
+| 📚 **Library & history** | Save tiles to a library (as copies or linked), restore any of the last versions. |
+| 🔣 **311 icons** | Minimal, product and brand icons, inline SVG, inherit text color, no external files. |
+| 🔍 **SEO built in** | Content sync for Rank Math / Yoast, CSS and JSON-LD in `<head>`, lazy images, LCP priority, a live SEO checker. |
+| 🌍 **10 languages** | English, Kurdish (Sorani), Persian, Arabic, Turkish, German, French, Spanish, Russian, Chinese — the whole UI, dates and times follow the language. Persian (Jalali) and Gregorian calendars. |
+| 🔄 **Transfer** | Export tiles, headers/footers and pages to one file and import them on another site. |
+| 🛡️ **Secure updates** | Updates straight from GitHub, verified with SHA-256; optional Ed25519-signed private update server and signed offline updates. |
+| 🌐 **Offline mode** | A "national internet" mode that stops the dashboard from hanging on blocked foreign services, plus a bundled Vazirmatn font. |
+
+### Installation
+
+1. Download the latest `kashi.zip` from [Releases](https://github.com/KaroRostampour/kashi/releases) (or *Code → Download ZIP* and rename the folder inside to `kashi`).
+2. In WordPress go to **Plugins → Add New → Upload Plugin**, upload the zip and activate it.
+3. Open **Pages**, hover a page and click **Edit with Kashi**.
+4. Pick the language under **Kashi → Settings → Plugin language** (default: your dashboard language).
+
+Updates appear under **Plugins** like any other plugin.
+
+### Quick start
+
+```html
+<section class="hero">
+  <h1>Hello, Kashi</h1>
+  <p>Paste any HTML, CSS and JS here.</p>
+</section>
+<style>
+  .hero { padding: 80px 24px; text-align: center }
+  .hero h1 { font-size: 48px }
+</style>
+```
+
+Paste it into a tile, watch the preview update, then use **Direct edit** or the **spacing panel** to polish it. Save — done.
+
+Shortcode: `[kashi id="12"]` shows a library tile anywhere.
+
+### Authenticity
+
+Kashi is free software, so anyone may study, change and share it under the GPL. What cannot be faked is the **official build**: every release ships a `kashi-release.json` file listing the SHA-256 of every file, signed with the creator's Ed25519 key. *Kashi → About Kashi* shows whether the installed copy is **official and untouched** or **modified**. Get the official build only from this repository.
+
+---
+
+<div dir="rtl">
+
+## فارسی
+
+### چرا کاشی؟
+
+صفحه‌سازهایی مثل المنتور برای چند خط طراحی، چند مگابایت CSS و جاوااسکریپت و `div` تودرتو به صفحه اضافه می‌کنند. کاشی برعکس است: **کد از شما، جای راحت و سریع برای آن از کاشی.**
+
+هر قسمت صفحه یک «کاشی» است: HTML، CSS و JS خودش. کاشی‌ها کنار هم صفحه را می‌سازند. هیچ فایل سراسری‌ای لود نمی‌شود؛ هر صفحه فقط کدی را دارد که واقعاً لازم دارد.
+
+کاشی برای طراحانی ساخته شده که خودشان کد می‌نویسند یا آن را از ChatGPT، Claude یا هر هوش مصنوعی دیگری می‌گیرند: کد را بچسبانید، همان لحظه نتیجه را ببینید، با کلیک ظاهرش را دقیق کنید و منتشر کنید.
+
+### امکانات
+
+- ⚡ **ویرایشگر زنده** تمام‌صفحه با پیش‌نمایش داخل قالب واقعی سایت، با عرض واقعی هر دستگاه (۱۴۴۰ / ۱۲۸۰ / ۷۶۸ / ۳۹۰)
+- 🧩 **کاشی‌ها**: یک صفحه HTML کامل یا CSS/JS خام را بچسبانید؛ کاشی نوع کد را تشخیص می‌دهد و هر بخش را سر جایش می‌گذارد. CSS هر کاشی فقط روی خودش اثر دارد
+- 🎨 **ویرایش مستقیم** متن، لینک، تصویر، رنگ و آیکون داخل پیش‌نمایش، بدون دست زدن به کد
+- 📐 **پنل فاصله‌ها** به سبک المنتور: حاشیه خارجی و فاصله داخلی با قفل چهار طرف، واحد (px، %، em، rem، vh، vw) و مقدار جدا برای هر دستگاه؛ به‌علاوه پس‌زمینه، گردی گوشه، حداقل ارتفاع، شناسه و کلاس CSS
+- 📱 **نمایش در دستگاه‌ها**: هر کاشی فقط در دسکتاپ، لپ‌تاپ، تبلت یا موبایل؛ مثلاً یک هیروی دسکتاپ و یک هیروی موبایل. H1 تکراری خودکار برای سئو درست می‌شود
+- ⏰ **زمان‌بندی انتشار** با تاریخ شمسی و «پایان نمایش» اختیاری برای جشنواره‌ها؛ با LiteSpeed و کش‌های دیگر بدون پاکسازی دستی
+- 🧱 **هدر و فوتر** سایت با کاشی، با شرط نمایش، سازگار با هر قالب
+- 📚 **کتابخانه و تاریخچه نسخه‌ها**: کاشی کپی یا لینک‌شده و بازگردانی نسخه‌های قبلی
+- 🔣 **۳۱۱ آیکون** مینیمال، محصول و برند؛ SVG داخلی، رنگ متن اطراف را می‌گیرد
+- 🔍 **سئو**: همگام با Rank Math / Yoast، CSS و اسکیما در `<head>`، تصاویر lazy، اولویت LCP، بررسی‌کننده سئوی زنده
+- 🌍 **۱۰ زبان**: انگلیسی، کوردی سورانی، فارسی، عربی، ترکی، آلمانی، فرانسوی، اسپانیایی، روسی و چینی؛ همه منوها، پیام‌ها، تاریخ و ساعت به همان زبان. تقویم شمسی و میلادی
+- 🔄 **خروجی / ورودی**: انتقال کاشی‌ها، هدر/فوترها و صفحه‌ها بین سایت‌ها با یک فایل
+- 🛡️ **آپدیت امن** مستقیم از گیت‌هاب با بررسی SHA-256؛ سرور آپدیت اختصاصی و آپدیت آفلاین با امضای دیجیتال Ed25519
+- 🌐 **حالت اینترنت ملی** برای قطعی اینترنت بین‌الملل و فونت وزیرمتن محلی
+
+### نصب
+
+۱. آخرین `kashi.zip` را از [Releases](https://github.com/KaroRostampour/kashi/releases) دانلود کنید (یا Code ← Download ZIP و نام پوشه داخل را `kashi` بگذارید).
+۲. در وردپرس: «افزونه‌ها ← افزودن ← بارگذاری افزونه»، فایل را نصب و فعال کنید.
+۳. در فهرست «برگه‌ها» روی «ویرایش با کاشی» بزنید.
+۴. زبان افزونه را از «کاشی ← تنظیمات ← زبان افزونه» انتخاب کنید (پیش‌فرض: زبان پیشخوان).
+
+نسخه‌های جدید مثل بقیه افزونه‌ها در «افزونه‌ها» با دکمه «به‌روزرسانی» نمایش داده می‌شوند.
+
+### نسخه رسمی
+
+کاشی نرم‌افزار آزاد با مجوز GPL است؛ هر کسی می‌تواند آن را بخواند، تغییر دهد و منتشر کند. چیزی که جعل‌شدنی نیست **نسخه رسمی** است: هر انتشار یک فایل `kashi-release.json` دارد که SHA-256 همه فایل‌ها را با کلید Ed25519 سازنده امضا می‌کند. صفحه «کاشی ← درباره کاشی» نشان می‌دهد نسخه نصب‌شده **رسمی و دست‌نخورده** است یا **تغییریافته**. نسخه رسمی را فقط از همین مخزن دریافت کنید.
+
+</div>
+
+---
+
+## Developers
 
 ```
-kashi.php                         هسته افزونه (ویرایشگر، رندر، سئو، هدر/فوتر)
-includes/class-kashi-updater.php  آپدیت خودکار (کلاینت + سرور آپدیت + آپدیت آفلاین)
-includes/class-kashi-net.php      حالت اینترنت ملی و فونت محلی
-assets/fonts/                     فونت Vazirmatn (مجوز OFL)
-templates/full-width.php          طرح تمام‌عرض
-templates/canvas.php              طرح بوم خالی
-readme.txt                        راهنما و تغییرات نسخه‌ها
+kashi.php                          core: editor, rendering, SEO, header/footer, styles, i18n
+includes/class-kashi-updater.php   updates (GitHub, private server, signed offline) + settings
+includes/class-kashi-net.php       offline ("national internet") mode, local font
+includes/class-kashi-about.php     About page, creator credit, official-build check
+languages/{code}.json              translations (Persian source text → language)
+assets/                            icons, KR logo, Vazirmatn font (OFL)
+templates/                         full-width and canvas layouts
 ```
 
-## انتشار نسخه جدید
+**Translations.** UI strings are written in Persian and wrapped in `Kashi::t()` (PHP) or `T()` (editor JS). Each `languages/{code}.json` maps the Persian text to the translation; a missing entry falls back to Persian. Pull requests for new languages are welcome.
 
-1. شماره نسخه را در `kashi.php` (هم در هدر `Version:` و هم `const VERSION`) و `Stable tag` در `readme.txt` بالا ببرید و تغییرات را در `readme.txt` بنویسید.
-2. فایل zip بسازید؛ پوشه داخل zip باید `kashi/` باشد.
-3. کد را در شاخه `main` push کنید. سایت‌ها نسخه را از هدر `kashi.php` آخرین کامیت می‌خوانند. (اختیاری: Release با تگ `vX.Y.Z` و فایل `kashi-X.Y.Z.zip` اولویت دارد.)
-4. سایت‌ها (منبع آپدیت: گیت‌هاب، با توکن فقط‌خواندنی) دکمه «به‌روزرسانی» را می‌بینند.
+**Data compatibility.** Database keys from the predecessor *Lite Sections* (`_lsec_*` meta, the `lsec_section` post type, `lsec_revs_*`, the `[lsec]` shortcode) are kept on purpose. Don't rename them without a migration.
 
-## نکات سازگاری
+**Release.** Bump `Version:` and `const VERSION` in `kashi.php` and `Stable tag` in `readme.txt`, sign the build (`kashi-release.json`), push to `main`. Sites read the version from the latest commit; a GitHub Release with a `kashi-X.Y.Z.zip` asset takes priority.
 
-کلیدهای ذخیره‌شده در دیتابیس (`_lsec_*`، نوع پست `lsec_section`، `lsec_revs_*`) از نسخه قبلی (Lite Sections) حفظ شده‌اند تا صفحه‌های ساخته‌شده خراب نشوند. شورت‌کد `[lsec]` هم کنار `[kashi]` کار می‌کند. این نام‌ها را تغییر ندهید مگر همراه با مهاجرت داده.
+## Creator
 
-## مجوز
+Designed and built by **[KaroRostampour](https://github.com/KaroRostampour)** · Karorostampoor@gmail.com
 
-GPL-2.0-or-later
+The name “Kashi” and the KR logo belong to the creator.
+
+## License
+
+[GPL-2.0-or-later](https://www.gnu.org/licenses/gpl-2.0.html). Icons: Lucide (ISC) and others, see `assets/ICONS-LICENSE.txt`. Font: Vazirmatn (SIL OFL).

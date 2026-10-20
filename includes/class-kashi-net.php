@@ -109,7 +109,7 @@ final class Kashi_Net {
 		if ( false !== $pre || ! self::is_blocked( $url ) ) {
 			return $pre;
 		}
-		return new WP_Error( 'kashi_offline', 'حالت اینترنت ملی کاشی: درخواست به ' . wp_parse_url( $url, PHP_URL_HOST ) . ' ارسال نشد.' );
+		return new WP_Error( 'kashi_offline', Kashi::t( 'حالت اینترنت ملی کاشی: درخواست به ' ) . wp_parse_url( $url, PHP_URL_HOST ) . Kashi::t( ' ارسال نشد.' ) );
 	}
 
 	public static function avatar( $args, $id_or_email ) {
@@ -152,27 +152,27 @@ final class Kashi_Net {
 		$s = self::settings();
 		?>
 		<div class="kashi-card">
-			<h2>اینترنت ملی و سرعت</h2>
-			<p class="desc">برای وقتی اینترنت بین‌الملل قطع یا کند است. کاشی خودش هیچ فایلی از خارج بارگذاری نمی‌کند؛ این گزینه‌ها بقیه سایت را هم سبک می‌کنند.</p>
+			<h2><?php echo esc_html( Kashi::t( 'اینترنت ملی و سرعت' ) ); ?></h2>
+			<p class="desc"><?php echo esc_html( Kashi::t( 'برای وقتی اینترنت بین‌الملل قطع یا کند است. کاشی خودش هیچ فایلی از خارج بارگذاری نمی‌کند؛ این گزینه‌ها بقیه سایت را هم سبک می‌کنند.' ) ); ?></p>
 			<div class="kashi-row">
-				<label for="kashi_net_block">حالت اینترنت ملی</label>
+				<label for="kashi_net_block"><?php echo esc_html( Kashi::t( 'حالت اینترنت ملی' ) ); ?></label>
 				<div>
-					<label><input type="checkbox" id="kashi_net_block" name="kashi_net_block" value="1" <?php checked( $s['block'] ); ?>> درخواست‌های سرور به سرویس‌های خارجی زیر فوراً رد شوند</label>
-					<p class="description">پیشخوان دیگر منتظر wordpress.org، گراواتار، گوگل و سرور لایسنس افزونه‌ها نمی‌ماند. در این حالت آپدیت وردپرس و افزونه‌های مخزن، و فعال‌سازی لایسنس افزونه‌های خارجی کار نمی‌کند؛ بعد از وصل شدن اینترنت خاموشش کنید. دامنه‌های .ir (درگاه پرداخت، پیامک)، خود سایت و سرور آپدیت کاشی هیچ‌وقت مسدود نمی‌شوند.</p>
+					<label><input type="checkbox" id="kashi_net_block" name="kashi_net_block" value="1" <?php checked( $s['block'] ); ?>> <?php echo esc_html( Kashi::t( 'درخواست‌های سرور به سرویس‌های خارجی زیر فوراً رد شوند' ) ); ?></label>
+					<p class="description"><?php echo esc_html( Kashi::t( 'پیشخوان دیگر منتظر wordpress.org، گراواتار، گوگل و سرور لایسنس افزونه‌ها نمی‌ماند. در این حالت آپدیت وردپرس و افزونه‌های مخزن، و فعال‌سازی لایسنس افزونه‌های خارجی کار نمی‌کند؛ بعد از وصل شدن اینترنت خاموشش کنید. دامنه‌های .ir (درگاه پرداخت، پیامک)، خود سایت و سرور آپدیت کاشی هیچ‌وقت مسدود نمی‌شوند.' ) ); ?></p>
 				</div>
 			</div>
 			<div class="kashi-row">
-				<label for="kashi_net_hosts">دامنه‌های مسدود</label>
+				<label for="kashi_net_hosts"><?php echo esc_html( Kashi::t( 'دامنه‌های مسدود' ) ); ?></label>
 				<div>
 					<textarea id="kashi_net_hosts" name="kashi_net_hosts" rows="5" class="ltr"><?php echo esc_textarea( $s['hosts'] ); ?></textarea>
-					<p class="description">هر خط یک دامنه؛ زیردامنه‌ها هم شامل می‌شوند (مثلاً gravatar.com شامل secure.gravatar.com).</p>
+					<p class="description"><?php echo esc_html( Kashi::t( 'هر خط یک دامنه؛ زیردامنه‌ها هم شامل می‌شوند (مثلاً gravatar.com شامل secure.gravatar.com).' ) ); ?></p>
 				</div>
 			</div>
 			<div class="kashi-row">
-				<label for="kashi_net_font">فونت وزیرمتن محلی</label>
+				<label for="kashi_net_font"><?php echo esc_html( Kashi::t( 'فونت وزیرمتن محلی' ) ); ?></label>
 				<div>
-					<label><input type="checkbox" id="kashi_net_font" name="kashi_net_font" value="1" <?php checked( $s['font'] ); ?>> فونت Vazirmatn از خود سایت بارگذاری شود (۱۱۰ کیلوبایت، همه وزن‌ها)</label>
-					<p class="description">در CSS کاشی‌ها بنویسید <code class="ltr">font-family: Vazirmatn, sans-serif;</code> و لینک گوگل‌فونت را حذف کنید. فونت پیش‌بارگذاری می‌شود تا متن پرش نکند. مجوز: SIL Open Font License.</p>
+					<label><input type="checkbox" id="kashi_net_font" name="kashi_net_font" value="1" <?php checked( $s['font'] ); ?>> <?php echo esc_html( Kashi::t( 'فونت Vazirmatn از خود سایت بارگذاری شود (۱۱۰ کیلوبایت، همه وزن‌ها)' ) ); ?></label>
+					<p class="description"><?php echo esc_html( Kashi::t( 'در CSS کاشی‌ها بنویسید' ) ); ?> <code class="ltr">font-family: Vazirmatn, sans-serif;</code> <?php echo esc_html( Kashi::t( 'و لینک گوگل‌فونت را حذف کنید. فونت پیش‌بارگذاری می‌شود تا متن پرش نکند. مجوز: SIL Open Font License.' ) ); ?></p>
 				</div>
 			</div>
 		</div>

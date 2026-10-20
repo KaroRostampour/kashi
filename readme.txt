@@ -1,12 +1,20 @@
 === کاشی — Kashi ===
-Contributors: Karorostampoor@gmail.com
+Contributors: karorostampour
 Tags: page builder, code editor, sections, lightweight, seo
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 1.6.1
+Stable tag: 2.0.0
 License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
+A lightweight, code-first page builder: build pages tile by tile with your own code.
 صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید.
+
+== Description ==
+
+Kashi is made for designers who build pages with code (or with AI). Every part of a page is a "tile" with its own HTML, CSS and JS; tiles stack into a page. Live full-screen editor with real-theme preview, direct visual editing, Elementor-style spacing per device, per-device tiles, scheduled publishing, header/footer builder, library and version history, 311 icons, built-in SEO, export/import, secure GitHub updates and 10 interface languages (English, Kurdish Sorani, Persian, Arabic, Turkish, German, French, Spanish, Russian, Chinese).
+
+Created by KaroRostampour — https://github.com/KaroRostampour/kashi
 
 == توضیحات ==
 
@@ -35,14 +43,11 @@ License: GPLv2 or later
 
 == آپدیت خودکار (گیت‌هاب) ==
 
-نسخه‌های جدید از Release های مخزن گیت‌هاب KaroRostampour/kashi خوانده می‌شوند.
-۱. کاشی ← تنظیمات ← منبع آپدیت: «گیت‌هاب».
-۲. چون مخزن خصوصی است، یک توکن بسازید: گیت‌هاب ← Settings ← Developer settings ← Personal access tokens ← Fine-grained tokens ← Generate new token؛ Repository access: فقط kashi؛ Permissions ← Contents: Read-only. توکن را در «توکن گیت‌هاب» بچسبانید و ذخیره کنید.
-   (یا در wp-config.php: define( 'KASHI_GITHUB_TOKEN', '...' );)
-۳. انتشار نسخه جدید: کافی است کد با شماره نسخه بالاتر در شاخه main گیت‌هاب ثبت شود؛ سایت‌ها خودشان آن را می‌بینند.
-   (اختیاری: اگر Release با تگ مثل v1.4.1 و فایل kashi-1.4.1.zip بسازید، Release اولویت دارد.)
-از آن به بعد همه سایت‌ها در «افزونه‌ها» دکمه «به‌روزرسانی» می‌بینند. فایل قبل از نصب با SHA-256 گیت‌هاب و شماره نسخه داخل zip بررسی می‌شود.
+نسخه‌های جدید از مخزن عمومی گیت‌هاب KaroRostampour/kashi خوانده می‌شوند و مثل بقیه افزونه‌ها در «افزونه‌ها» دکمه «به‌روزرسانی» نمایش داده می‌شود. تنظیم خاصی لازم نیست.
+فایل قبل از نصب با SHA-256 گیت‌هاب و شماره نسخه داخل zip بررسی می‌شود.
+(اگر مخزن را fork خصوصی کرده‌اید، در «کاشی ← تنظیمات» آدرس مخزن و یک توکن فقط‌خواندنی Contents: Read-only بگذارید.)
 
+انتشار نسخه جدید: کافی است کد با شماره نسخه بالاتر در شاخه main ثبت شود. Release با تگ vX.Y.Z و فایل kashi-X.Y.Z.zip اولویت دارد.
 روش قدیمی (سرور آپدیت روی سایت خودتان با امضای Ed25519) همچنان در «پیشرفته» موجود است.
 
 == اینترنت ملی ==
@@ -77,6 +82,15 @@ License: GPLv2 or later
 <?php defined( 'ABSPATH' ) || exit;
 
 == تغییرات ==
+
+= 2.0.0 =
+* ۱۰ زبان: انگلیسی، کوردی سورانی، فارسی، عربی، ترکی، آلمانی، فرانسوی، اسپانیایی، روسی و چینی — همه منوها، پیام‌ها، ویرایشگر و تاریخ و ساعت به زبان انتخابی؛ چیدمان راست‌به‌چپ / چپ‌به‌راست خودکار؛ تقویم شمسی یا میلادی (کاشی ← تنظیمات ← زبان)
+* پنل «تنظیمات بخش» به سبک المنتور: حاشیه خارجی و فاصله داخلی با قفل چهار طرف، واحد و مقدار جدا برای دسکتاپ / لپ‌تاپ / تبلت / موبایل؛ رنگ پس‌زمینه، گردی گوشه، حداقل ارتفاع، شناسه و کلاس CSS
+* منوی «خروج» در ویرایشگر: پیشخوان، مشاهده صفحه، ویرایشگر وردپرس، کتابخانه کاشی و تنظیمات
+* صفحه «درباره کاشی» با معرفی سازنده و لوگوی KR، و تشخیص نسخه رسمی با امضای دیجیتال (هر تغییر در فایل‌ها «نسخه تغییریافته» نشان داده می‌شود)
+* زمان‌بندی انتشار با منطقه زمانی سایت (نه فقط تهران)
+* مخزن گیت‌هاب عمومی شد؛ آپدیت بدون توکن
+* English: 10 interface languages with RTL/LTR and Jalali/Gregorian dates; Elementor-style per-device margin/padding panel; editor exit menu; About page with official-build verification; schedules use the site time zone.
 
 = 1.6.1 =
 * زمان‌بندی + کش، از ریشه: صفحه‌ای که بخش زمان‌بندی‌شده دارد، به LiteSpeed می‌گوید نسخه کش فقط تا لحظه تغییر بعدی معتبر است؛ سر وقت، خود سرور کش را منقضی می‌کند و بخش بدون پاکسازی دستی دیده می‌شود (حتی اگر کرون وردپرس اجرا نشود)

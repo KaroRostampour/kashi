@@ -1,11 +1,13 @@
 <?php
 /**
  * Plugin Name:       کاشی — Kashi
- * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.6.1
- * Author:            Karorostampoor@gmail.com
- * Author URI:        mailto:Karorostampoor@gmail.com
+ * Plugin URI:        https://github.com/KaroRostampour/kashi
+ * Description:       A lightweight, code-first page builder: build pages tile by tile with your own HTML/CSS/JS and see the result instantly. No bloat, works with any theme and SEO plugin. 10 languages.
+ * Version:           2.0.0
+ * Author:            KaroRostampour
+ * Author URI:        https://github.com/KaroRostampour
  * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       kashi
  * Requires at least: 6.0
  * Requires PHP:      7.4
@@ -19,7 +21,132 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.6.1';
+	const VERSION = '2.0.0';
+
+	/* ================================================================== *
+	 * زبان‌ها (i18n)
+	 * متن‌های منبع فارسی‌اند؛ برای هر زبان یک فایل languages/{code}.json «فارسی ← ترجمه»
+	 * ================================================================== */
+	const LANGS = array(
+		'fa'  => array( 'فارسی', 'fa-IR', 'rtl' ),
+		'en'  => array( 'English', 'en-US', 'ltr' ),
+		'ckb' => array( 'کوردی (سۆرانی)', 'ckb-IQ', 'rtl' ),
+		'ar'  => array( 'العربية', 'ar', 'rtl' ),
+		'tr'  => array( 'Türkçe', 'tr-TR', 'ltr' ),
+		'de'  => array( 'Deutsch', 'de-DE', 'ltr' ),
+		'fr'  => array( 'Français', 'fr-FR', 'ltr' ),
+		'es'  => array( 'Español', 'es-ES', 'ltr' ),
+		'ru'  => array( 'Русский', 'ru-RU', 'ltr' ),
+		'zh'  => array( '中文（简体）', 'zh-CN', 'ltr' ),
+	);
+	private static $lang_cache = null;
+	private static $dict_cache = null;
+
+	/** زبان فعال افزونه: تنظیم «زبان افزونه» یا (خودکار) زبان پیشخوان کاربر */
+	public static function lang() {
+		if ( null !== self::$lang_cache ) {
+			return self::$lang_cache;
+		}
+		$o = function_exists( 'get_option' ) ? (string) get_option( 'kashi_lang', 'auto' ) : 'auto';
+		if ( isset( self::LANGS[ $o ] ) ) {
+			return self::$lang_cache = $o;
+		}
+		if ( function_exists( 'get_user_locale' ) ) {
+			$loc = (string) get_user_locale();
+		} elseif ( function_exists( 'get_locale' ) ) {
+			$loc = (string) get_locale();
+		} else {
+			$loc = 'fa_IR';
+		}
+		$loc = strtolower( $loc );
+		$map = array( 'fa' => 'fa', 'ckb' => 'ckb', 'ku' => 'ckb', 'ar' => 'ar', 'tr' => 'tr', 'de' => 'de', 'fr' => 'fr', 'es' => 'es', 'ru' => 'ru', 'zh' => 'zh', 'en' => 'en' );
+		$pre = preg_replace( '/[_-].*$/', '', $loc );
+		return self::$lang_cache = isset( $map[ $pre ] ) ? $map[ $pre ] : 'en';
+	}
+
+	public static function set_lang( $code ) {
+		self::$lang_cache = isset( self::LANGS[ $code ] ) ? $code : null;
+		self::$dict_cache = null;
+	}
+
+	public static function dir() {
+		return self::LANGS[ self::lang() ][2];
+	}
+
+	public static function locale_tag() {
+		return self::LANGS[ self::lang() ][1];
+	}
+
+	/** تقویم: شمسی برای فارسی (یا اگر در تنظیمات انتخاب شود)، میلادی برای بقیه */
+	public static function calendar() {
+		$c = function_exists( 'get_option' ) ? (string) get_option( 'kashi_calendar', 'auto' ) : 'auto';
+		if ( 'jalali' === $c || 'gregorian' === $c ) {
+			return $c;
+		}
+		return 'fa' === self::lang() ? 'jalali' : 'gregorian';
+	}
+
+	/** منطقه زمانی برای زمان‌بندی: منطقه سایت؛ اگر سایت فارسی روی UTC مانده، تهران */
+	public static function timezone() {
+		$tz = function_exists( 'wp_timezone_string' ) ? (string) wp_timezone_string() : 'UTC';
+		if ( ( '' === $tz || 'UTC' === $tz || '+00:00' === $tz ) && 'jalali' === self::calendar() ) {
+			$tz = 'Asia/Tehran';
+		}
+		return $tz;
+	}
+
+	public static function dict() {
+		if ( null !== self::$dict_cache ) {
+			return self::$dict_cache;
+		}
+		self::$dict_cache = array();
+		$l = self::lang();
+		if ( 'fa' !== $l ) {
+			$f = __DIR__ . '/languages/' . $l . '.json';
+			if ( is_readable( $f ) ) {
+				$j = json_decode( (string) file_get_contents( $f ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+				if ( is_array( $j ) ) {
+					self::$dict_cache = $j;
+				}
+			}
+		}
+		return self::$dict_cache;
+	}
+
+	/** ترجمه یک متن (فاصله‌های ابتدا/انتهای متن حفظ می‌شود) */
+	public static function t( $s ) {
+		$s = (string) $s;
+		$k = trim( $s );
+		if ( '' === $k ) {
+			return $s;
+		}
+		$d = self::dict();
+		if ( ! isset( $d[ $k ] ) || '' === $d[ $k ] ) {
+			return $s;
+		}
+		$pre  = substr( $s, 0, strlen( $s ) - strlen( ltrim( $s ) ) );
+		$post = substr( $s, strlen( rtrim( $s ) ) );
+		return $pre . $d[ $k ] . $post;
+	}
+
+	/** «۵ دقیقه پیش» به زبان افزونه */
+	public static function ago( $t ) {
+		$d = max( 0, time() - (int) $t );
+		if ( $d < 60 ) {
+			$v = self::t( 'چند ثانیه' );
+		} elseif ( $d < 3600 ) {
+			$v = sprintf( self::t( '%d دقیقه' ), (int) floor( $d / 60 ) );
+		} elseif ( $d < 86400 ) {
+			$v = sprintf( self::t( '%d ساعت' ), (int) floor( $d / 3600 ) );
+		} elseif ( $d < 2592000 ) {
+			$v = sprintf( self::t( '%d روز' ), (int) floor( $d / 86400 ) );
+		} elseif ( $d < 31536000 ) {
+			$v = sprintf( self::t( '%d ماه' ), (int) floor( $d / 2592000 ) );
+		} else {
+			$v = sprintf( self::t( '%d سال' ), (int) floor( $d / 31536000 ) );
+		}
+		return sprintf( self::t( '%s پیش' ), $v );
+	}
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -303,7 +430,8 @@ final class Kashi {
 			$out[] = array(
 				'i'    => $i,
 				'when' => $t ? wp_date( 'Y/m/d H:i', $t ) : '',
-				'ago'  => $t ? human_time_diff( $t, time() ) . ' پیش' : '',
+				'ts'   => $t,
+				'ago'  => $t ? self::ago( $t ) : '',
 				'user' => isset( $r['user'] ) ? $r['user'] : '',
 				'n'    => isset( $r['n'] ) ? (int) $r['n'] : 0,
 			);
@@ -365,7 +493,7 @@ final class Kashi {
 			return self::normalize_blocks(
 				array(
 					array(
-						'name' => 'بخش ۱',
+						'name' => self::t( 'بخش ۱' ),
 						'code' => $old,
 						'full' => '1' === get_post_meta( $id, '_lsec_full', true ),
 					),
@@ -403,6 +531,115 @@ final class Kashi {
 		return $css;
 	}
 
+	/* ---------- تنظیمات ظاهری هر بخش (به سبک المنتور) ---------- */
+	const STYLE_DEV   = array( 'd' => '', 'l' => '(max-width:1439.98px)', 't' => '(max-width:1024.98px)', 'm' => '(max-width:767.98px)' );
+	const STYLE_UNITS = array( 'px', '%', 'em', 'rem', 'vh', 'vw' );
+
+	private static function norm_num( $v, $neg = true ) {
+		if ( ! is_scalar( $v ) || '' === trim( (string) $v ) ) {
+			return '';
+		}
+		$v = str_replace( ',', '.', trim( (string) $v ) );
+		if ( ! is_numeric( $v ) ) {
+			return '';
+		}
+		$n = max( -10000, min( 10000, (float) $v ) );
+		if ( ! $neg && $n < 0 ) {
+			$n = 0;
+		}
+		return (string) ( round( $n, 2 ) + 0 );
+	}
+
+	private static function norm_unit( $u ) {
+		return in_array( $u, self::STYLE_UNITS, true ) ? $u : 'px';
+	}
+
+	private static function norm_style( $st ) {
+		$st  = is_array( $st ) ? $st : array();
+		$out = array();
+		foreach ( array( 'm', 'p' ) as $prop ) {
+			foreach ( array_keys( self::STYLE_DEV ) as $dv ) {
+				$box = isset( $st[ $prop ][ $dv ] ) && is_array( $st[ $prop ][ $dv ] ) ? $st[ $prop ][ $dv ] : array();
+				$v   = array();
+				foreach ( array( 't', 'r', 'b', 'l' ) as $side ) {
+					$n = isset( $box[ $side ] ) ? self::norm_num( $box[ $side ], 'm' === $prop ) : '';
+					if ( '' !== $n ) {
+						$v[ $side ] = $n;
+					}
+				}
+				if ( $v ) {
+					$v['u']               = self::norm_unit( isset( $box['u'] ) ? $box['u'] : 'px' );
+					$out[ $prop ][ $dv ] = $v;
+				}
+			}
+		}
+		foreach ( array( 'r' => false, 'mh' => false ) as $k => $neg ) {
+			if ( isset( $st[ $k ] ) && is_array( $st[ $k ] ) ) {
+				$n = self::norm_num( isset( $st[ $k ]['v'] ) ? $st[ $k ]['v'] : '', $neg );
+				if ( '' !== $n ) {
+					$out[ $k ] = array( 'v' => $n, 'u' => self::norm_unit( isset( $st[ $k ]['u'] ) ? $st[ $k ]['u'] : 'px' ) );
+				}
+			}
+		}
+		if ( isset( $st['bg'] ) && preg_match( '/^#[0-9a-f]{3,8}$/i', (string) $st['bg'] ) ) {
+			$out['bg'] = strtolower( $st['bg'] );
+		}
+		if ( isset( $st['cls'] ) ) {
+			$c = trim( preg_replace( '/[^A-Za-z0-9_\- ]/', '', (string) $st['cls'] ) );
+			if ( '' !== $c ) {
+				$out['cls'] = substr( preg_replace( '/\s+/', ' ', $c ), 0, 120 );
+			}
+		}
+		if ( isset( $st['id'] ) ) {
+			$i = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $st['id'] );
+			if ( '' !== $i ) {
+				$out['id'] = substr( $i, 0, 60 );
+			}
+		}
+		return $out;
+	}
+
+	/** CSS حاشیه/فاصله/پس‌زمینه بخش؛ دسکتاپ پایه است و دستگاه‌های کوچک‌تر آن را بازنویسی می‌کنند */
+	private static function style_css( $uid, $st ) {
+		if ( ! $st ) {
+			return '';
+		}
+		$sel = '.kashi-b-' . $uid;
+		$css = '';
+		$map = array( 't' => 'top', 'r' => 'right', 'b' => 'bottom', 'l' => 'left' );
+		foreach ( self::STYLE_DEV as $dv => $mq ) {
+			$rules = '';
+			foreach ( array( 'm' => 'margin', 'p' => 'padding' ) as $k => $prop ) {
+				if ( empty( $st[ $k ][ $dv ] ) ) {
+					continue;
+				}
+				$box = $st[ $k ][ $dv ];
+				foreach ( $map as $side => $name ) {
+					if ( isset( $box[ $side ] ) ) {
+						// حاشیه چپ/راست با !important تا بر استایل وسط‌چین/تمام‌عرض بخش غلبه کند
+						$imp    = ( 'm' === $k && ( 'r' === $side || 'l' === $side ) ) ? '!important' : '';
+						$rules .= $prop . '-' . $name . ':' . $box[ $side ] . ( '0' === $box[ $side ] ? '' : $box['u'] ) . $imp . ';';
+					}
+				}
+			}
+			if ( 'd' === $dv ) {
+				if ( ! empty( $st['bg'] ) ) {
+					$rules .= 'background-color:' . $st['bg'] . ';';
+				}
+				if ( ! empty( $st['r'] ) ) {
+					$rules .= 'border-radius:' . $st['r']['v'] . $st['r']['u'] . ';overflow:hidden;';
+				}
+				if ( ! empty( $st['mh'] ) ) {
+					$rules .= 'min-height:' . $st['mh']['v'] . $st['mh']['u'] . ';';
+				}
+			}
+			if ( '' !== $rules ) {
+				$css .= '' === $mq ? $sel . '{' . $rules . '}' : '@media ' . $mq . '{' . $sel . '{' . $rules . '}}';
+			}
+		}
+		return $css;
+	}
+
 	private static function normalize_blocks( $raw ) {
 		$out  = array();
 		$seen = array();
@@ -423,6 +660,7 @@ final class Kashi {
 				'dev'  => self::norm_dev( isset( $b['dev'] ) ? $b['dev'] : array() ),
 				'from' => isset( $b['from'] ) ? max( 0, (int) $b['from'] ) : 0,   // زمان شروع نمایش (UTC، ثانیه)
 				'until' => isset( $b['until'] ) ? max( 0, (int) $b['until'] ) : 0, // زمان پایان نمایش
+				'style' => self::norm_style( isset( $b['style'] ) ? $b['style'] : array() ),
 			);
 		}
 		return $out;
@@ -725,12 +963,15 @@ final class Kashi {
 				$h1_seen = true;
 			}
 			$c['css'] .= self::device_css( $b['uid'], $dev );
+			$c['css'] .= self::style_css( $b['uid'], isset( $b['style'] ) ? self::norm_style( $b['style'] ) : array() );
 			$out[]     = array(
 				'uid'  => $b['uid'],
 				'full' => (bool) $b['full'],
 				'dev'  => $dev,
 				'from' => isset( $b['from'] ) ? (int) $b['from'] : 0,
 				'until' => isset( $b['until'] ) ? (int) $b['until'] : 0,
+				'cls'  => isset( $b['style']['cls'] ) ? $b['style']['cls'] : '',
+				'eid'  => isset( $b['style']['id'] ) ? $b['style']['id'] : '',
 				'c'    => $c,
 			);
 		}
@@ -814,13 +1055,13 @@ final class Kashi {
 			self::CPT,
 			array(
 				'labels'          => array(
-					'name'          => 'کاشی‌ها',
-					'singular_name' => 'کاشی',
-					'add_new'       => 'افزودن کاشی',
-					'add_new_item'  => 'افزودن کاشی جدید',
-					'edit_item'     => 'ویرایش کاشی',
-					'all_items'     => 'کتابخانه کاشی',
-					'menu_name'     => 'کاشی',
+					'name'          => self::t( 'کاشی‌ها' ),
+					'singular_name' => self::t( 'کاشی' ),
+					'add_new'       => self::t( 'افزودن کاشی' ),
+					'add_new_item'  => self::t( 'افزودن کاشی جدید' ),
+					'edit_item'     => self::t( 'ویرایش کاشی' ),
+					'all_items'     => self::t( 'کتابخانه کاشی' ),
+					'menu_name'     => self::t( 'کاشی' ),
 				),
 				'public'          => false,
 				'show_ui'         => true,
@@ -839,22 +1080,22 @@ final class Kashi {
 			return;
 		}
 		$submenu[ 'edit.php?post_type=' . self::CPT ][] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-			'کاشی جدید (ویرایشگر زنده)',
+			self::t( 'کاشی جدید (ویرایشگر زنده)' ),
 			'edit_pages',
 			admin_url( 'admin-post.php?action=kashi_new&_wpnonce=' . wp_create_nonce( 'kashi_new' ) ),
 		);
 		add_submenu_page(
 			'edit.php?post_type=' . self::CPT,
-			'هدر و فوتر',
-			'هدر و فوتر',
+			self::t( 'هدر و فوتر' ),
+			self::t( 'هدر و فوتر' ),
 			'edit_pages',
 			'kashi-hf',
 			array( __CLASS__, 'hf_admin_page' )
 		);
 		add_submenu_page(
 			'edit.php?post_type=' . self::CPT,
-			'انتقال کاشی (خروجی / ورودی)',
-			'خروجی / ورودی',
+			self::t( 'انتقال کاشی (خروجی / ورودی)' ),
+			self::t( 'خروجی / ورودی' ),
 			'edit_pages',
 			'kashi-transfer',
 			array( __CLASS__, 'transfer_page' )
@@ -903,7 +1144,7 @@ final class Kashi {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$res = isset( $_GET['kashi_imported'] ) ? get_transient( 'kashi_import_result_' . get_current_user_id() ) : false;
 		?>
-		<div class="wrap kashi-transfer">
+		<div class="wrap kashi-transfer" dir="<?php echo esc_attr( self::dir() ); ?>">
 			<style>
 				.kashi-transfer .kt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;max-width:1000px;margin-top:16px}
 				.kashi-transfer .kt-card{background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:22px}
@@ -915,54 +1156,54 @@ final class Kashi {
 				.kashi-transfer .kt-tag{font-size:11px;padding:1px 8px;border-radius:99px;background:#f0f0f1;color:#50575e}
 				.kashi-transfer .kt-warn{background:#fcf9e8;border:1px solid #f0e2a8;border-radius:8px;padding:10px 12px;color:#6b5600;margin:12px 0}
 			</style>
-			<h1>انتقال کاشی بین سایت‌ها</h1>
+			<h1><?php echo esc_html( self::t( 'انتقال کاشی بین سایت‌ها' ) ); ?></h1>
 			<?php if ( is_array( $res ) ) : ?>
-				<div class="notice notice-<?php echo empty( $res['error'] ) ? 'success' : 'error'; ?> is-dismissible"><p><b>کاشی:</b> <?php echo esc_html( empty( $res['error'] ) ? $res['msg'] : $res['error'] ); ?></p></div>
+				<div class="notice notice-<?php echo empty( $res['error'] ) ? 'success' : 'error'; ?> is-dismissible"><p><b><?php echo esc_html( self::t( 'کاشی:' ) ); ?></b> <?php echo esc_html( empty( $res['error'] ) ? $res['msg'] : $res['error'] ); ?></p></div>
 			<?php endif; ?>
 			<div class="kt-grid">
 				<div class="kt-card">
-					<h2>خروجی</h2>
-					<p>کاشی‌ها، هدر/فوترها و صفحه‌هایی را که با کاشی ساخته‌اید در یک فایل ذخیره کنید.</p>
+					<h2><?php echo esc_html( self::t( 'خروجی' ) ); ?></h2>
+					<p><?php echo esc_html( self::t( 'کاشی‌ها، هدر/فوترها و صفحه‌هایی را که با کاشی ساخته‌اید در یک فایل ذخیره کنید.' ) ); ?></p>
 					<?php if ( ! $c['tiles'] && ! $c['pages'] ) : ?>
-						<p>هنوز چیزی با کاشی ساخته نشده است.</p>
+						<p><?php echo esc_html( self::t( 'هنوز چیزی با کاشی ساخته نشده است.' ) ); ?></p>
 					<?php else : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="kashi_export">
 						<?php wp_nonce_field( 'kashi_export' ); ?>
-						<label style="display:block;margin-bottom:8px"><input type="checkbox" onclick="document.querySelectorAll('.kt-item').forEach(function(x){x.checked=this.checked}.bind(this))" checked> انتخاب همه</label>
+						<label style="display:block;margin-bottom:8px"><input type="checkbox" onclick="document.querySelectorAll('.kt-item').forEach(function(x){x.checked=this.checked}.bind(this))" checked> <?php echo esc_html( self::t( 'انتخاب همه' ) ); ?></label>
 						<div class="kt-list">
-							<?php if ( $c['tiles'] ) : ?><h4>کاشی‌ها و هدر/فوتر</h4><?php endif; ?>
+							<?php if ( $c['tiles'] ) : ?><h4><?php echo esc_html( self::t( 'کاشی‌ها و هدر/فوتر' ) ); ?></h4><?php endif; ?>
 							<?php
 							foreach ( $c['tiles'] as $t ) :
 								$loc = get_post_meta( $t->ID, '_lsec_location', true );
 								?>
 								<label><input type="checkbox" class="kt-item" name="ids[]" value="<?php echo (int) $t->ID; ?>" checked> <?php echo esc_html( $t->post_title ? $t->post_title : '#' . $t->ID ); ?>
-								<?php if ( $loc ) : ?><span class="kt-tag"><?php echo 'header' === $loc ? 'هدر' : 'فوتر'; ?></span><?php endif; ?></label>
+								<?php if ( $loc ) : ?><span class="kt-tag"><?php echo 'header' === $loc ? self::t( 'هدر' ) : self::t( 'فوتر' ); ?></span><?php endif; ?></label>
 							<?php endforeach; ?>
-							<?php if ( $c['pages'] ) : ?><h4>صفحه‌ها</h4><?php endif; ?>
+							<?php if ( $c['pages'] ) : ?><h4><?php echo esc_html( self::t( 'صفحه‌ها' ) ); ?></h4><?php endif; ?>
 							<?php foreach ( $c['pages'] as $pg ) : ?>
 								<label><input type="checkbox" class="kt-item" name="ids[]" value="<?php echo (int) $pg->ID; ?>" checked> <?php echo esc_html( $pg->post_title ? $pg->post_title : '#' . $pg->ID ); ?> <span class="kt-tag"><?php echo esc_html( get_post_type_object( $pg->post_type ) ? get_post_type_object( $pg->post_type )->labels->singular_name : $pg->post_type ); ?></span></label>
 							<?php endforeach; ?>
 						</div>
-						<?php submit_button( 'دانلود فایل خروجی', 'primary', 'submit', false ); ?>
+						<?php submit_button( self::t( 'دانلود فایل خروجی' ), 'primary', 'submit', false ); ?>
 					</form>
 					<?php endif; ?>
 				</div>
 				<div class="kt-card">
-					<h2>ورودی</h2>
-					<p>فایل خروجی سایت دیگر را انتخاب کنید. همه موارد به‌صورت <b>جدید</b> ساخته می‌شوند و چیزی در این سایت جایگزین نمی‌شود.</p>
+					<h2><?php echo esc_html( self::t( 'ورودی' ) ); ?></h2>
+					<p><?php echo esc_html( self::t( 'فایل خروجی سایت دیگر را انتخاب کنید. همه موارد به‌صورت' ) ); ?> <b><?php echo esc_html( self::t( 'جدید' ) ); ?></b> <?php echo esc_html( self::t( 'ساخته می‌شوند و چیزی در این سایت جایگزین نمی‌شود.' ) ); ?></p>
 					<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="kashi_import">
 						<?php wp_nonce_field( 'kashi_import' ); ?>
 						<p><input type="file" name="kashi_file" accept=".json,application/json" required></p>
 						<div class="kt-warn">
-							• صفحه‌ها و هدر/فوترها به‌صورت <b>پیش‌نویس</b> وارد می‌شوند تا قبل از نمایش بررسی کنید.<br>
-							• شرط‌های «فقط این صفحه‌ها» به «کل سایت» برمی‌گردد (شناسه صفحه‌ها در هر سایت فرق دارد).<br>
-							• تصاویر از آدرس سایت قبلی لود می‌شوند؛ در صورت نیاز با «ویرایش مستقیم» عوضشان کنید.<br>
-							• فقط فایل‌هایی را وارد کنید که خودتان ساخته‌اید؛ فایل حاوی کد است.
-							<?php if ( ! current_user_can( 'unfiltered_html' ) ) : ?><br>• حساب شما اجازه اسکریپت ندارد؛ کدها هنگام ورود پاک‌سازی می‌شوند.<?php endif; ?>
+							<?php echo esc_html( self::t( '• صفحه‌ها و هدر/فوترها به‌صورت' ) ); ?> <b><?php echo esc_html( self::t( 'پیش‌نویس' ) ); ?></b> <?php echo esc_html( self::t( 'وارد می‌شوند تا قبل از نمایش بررسی کنید.' ) ); ?><br>
+							<?php echo esc_html( self::t( '• شرط‌های «فقط این صفحه‌ها» به «کل سایت» برمی‌گردد (شناسه صفحه‌ها در هر سایت فرق دارد).' ) ); ?><br>
+							<?php echo esc_html( self::t( '• تصاویر از آدرس سایت قبلی لود می‌شوند؛ در صورت نیاز با «ویرایش مستقیم» عوضشان کنید.' ) ); ?><br>
+							<?php echo esc_html( self::t( '• فقط فایل‌هایی را وارد کنید که خودتان ساخته‌اید؛ فایل حاوی کد است.' ) ); ?>
+							<?php if ( ! current_user_can( 'unfiltered_html' ) ) : ?><br><?php echo esc_html( self::t( '• حساب شما اجازه اسکریپت ندارد؛ کدها هنگام ورود پاک‌سازی می‌شوند.' ) ); ?><?php endif; ?>
 						</div>
-						<?php submit_button( 'ورود فایل', 'primary', 'submit', false ); ?>
+						<?php submit_button( self::t( 'ورود فایل' ), 'primary', 'submit', false ); ?>
 					</form>
 				</div>
 			</div>
@@ -1001,6 +1242,7 @@ final class Kashi {
 							'dev'  => isset( $b['dev'] ) ? $b['dev'] : array(),
 							'from' => isset( $b['from'] ) ? (int) $b['from'] : 0,
 							'until' => isset( $b['until'] ) ? (int) $b['until'] : 0,
+							'style' => isset( $b['style'] ) ? $b['style'] : array(),
 						);
 					},
 					$blocks
@@ -1034,7 +1276,7 @@ final class Kashi {
 	public static function export_download() {
 		check_admin_referer( 'kashi_export' );
 		if ( ! current_user_can( 'edit_pages' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( self::t( 'دسترسی ندارید.' ) );
 		}
 		$ids  = isset( $_POST['ids'] ) ? (array) wp_unslash( $_POST['ids'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- absint در export_build
 		$data = self::export_build( $ids );
@@ -1069,13 +1311,13 @@ final class Kashi {
 	 */
 	public static function import_data( $data ) {
 		if ( ! is_array( $data ) || empty( $data['kashi_export'] ) || ! isset( $data['items'] ) || ! is_array( $data['items'] ) ) {
-			return new WP_Error( 'kashi_import_format', 'این فایل، خروجی کاشی نیست.' );
+			return new WP_Error( 'kashi_import_format', self::t( 'این فایل، خروجی کاشی نیست.' ) );
 		}
 		if ( (int) $data['kashi_export'] > self::EXPORT_FORMAT ) {
-			return new WP_Error( 'kashi_import_version', 'این فایل با نسخه جدیدتر کاشی ساخته شده؛ اول کاشی این سایت را به‌روز کنید.' );
+			return new WP_Error( 'kashi_import_version', self::t( 'این فایل با نسخه جدیدتر کاشی ساخته شده؛ اول کاشی این سایت را به‌روز کنید.' ) );
 		}
 		if ( count( $data['items'] ) > 500 ) {
-			return new WP_Error( 'kashi_import_size', 'تعداد موارد فایل بیش از حد مجاز (۵۰۰) است.' );
+			return new WP_Error( 'kashi_import_size', self::t( 'تعداد موارد فایل بیش از حد مجاز (۵۰۰) است.' ) );
 		}
 		$trusted = current_user_can( 'unfiltered_html' );
 		$publish = current_user_can( 'publish_pages' );
@@ -1126,7 +1368,7 @@ final class Kashi {
 						array(
 							'post_type'   => $type,
 							'post_status' => $status,
-							'post_title'  => '' !== $title ? $title : 'کاشی وارد شده',
+							'post_title'  => '' !== $title ? $title : self::t( 'کاشی وارد شده' ),
 						)
 					),
 					true
@@ -1162,7 +1404,7 @@ final class Kashi {
 					);
 					$done['pages']++;
 				}
-				self::push_rev( $new_id, self::snapshot( $new_id ), null, 'ورود از فایل', $trusted );
+				self::push_rev( $new_id, self::snapshot( $new_id ), null, self::t( 'ورود از فایل' ), $trusted );
 				$created[] = (int) $new_id;
 			}
 		}
@@ -1174,19 +1416,19 @@ final class Kashi {
 	public static function import_upload() {
 		check_admin_referer( 'kashi_import' );
 		if ( ! current_user_can( 'edit_pages' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( self::t( 'دسترسی ندارید.' ) );
 		}
 		$back = admin_url( 'edit.php?post_type=' . self::CPT . '&page=kashi-transfer&kashi_imported=1' );
 		$key  = 'kashi_import_result_' . get_current_user_id();
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput
 		$f = isset( $_FILES['kashi_file'] ) ? $_FILES['kashi_file'] : null;
 		if ( ! $f || ! empty( $f['error'] ) || empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) {
-			set_transient( $key, array( 'error' => 'فایلی دریافت نشد.' ), 300 );
+			set_transient( $key, array( 'error' => self::t( 'فایلی دریافت نشد.' ) ), 300 );
 			wp_safe_redirect( $back );
 			exit;
 		}
 		if ( (int) $f['size'] > 20 * MB_IN_BYTES ) {
-			set_transient( $key, array( 'error' => 'حجم فایل بیش از ۲۰ مگابایت است.' ), 300 );
+			set_transient( $key, array( 'error' => self::t( 'حجم فایل بیش از ۲۰ مگابایت است.' ) ), 300 );
 			wp_safe_redirect( $back );
 			exit;
 		}
@@ -1196,7 +1438,7 @@ final class Kashi {
 		if ( is_wp_error( $res ) ) {
 			set_transient( $key, array( 'error' => $res->get_error_message() ), 300 );
 		} else {
-			set_transient( $key, array( 'msg' => sprintf( '%d کاشی و %d صفحه وارد شد. صفحه‌ها و هدر/فوترها پیش‌نویس هستند؛ بعد از بررسی منتشرشان کنید.', $res['tiles'], $res['pages'] ) ), 300 );
+			set_transient( $key, array( 'msg' => sprintf( self::t( '%d کاشی و %d صفحه وارد شد. صفحه‌ها و هدر/فوترها پیش‌نویس هستند؛ بعد از بررسی منتشرشان کنید.' ), $res['tiles'], $res['pages'] ) ), 300 );
 		}
 		wp_safe_redirect( $back );
 		exit;
@@ -1223,13 +1465,13 @@ final class Kashi {
 			)
 		);
 		$modes = array(
-			'all'     => 'کل سایت',
-			'front'   => 'فقط صفحه اصلی',
-			'include' => 'فقط صفحه‌های: ',
-			'exclude' => 'همه‌جا به‌جز: ',
+			'all'     => self::t( 'کل سایت' ),
+			'front'   => self::t( 'فقط صفحه اصلی' ),
+			'include' => self::t( 'فقط صفحه‌های: ' ),
+			'exclude' => self::t( 'همه‌جا به‌جز: ' ),
 		);
 		?>
-		<div class="wrap kashi-hfadmin">
+		<div class="wrap kashi-hfadmin" dir="<?php echo esc_attr( self::dir() ); ?>">
 			<style>
 				.kashi-hfadmin .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;max-width:900px;margin:18px 0 26px}
 				.kashi-hfadmin .card2{background:#fff;border:1px solid #e2e4e9;border-radius:12px;padding:20px;display:flex;gap:14px;align-items:flex-start}
@@ -1241,47 +1483,47 @@ final class Kashi {
 				.kashi-hfadmin .pill.h{background:#efeaff;color:#4b36c8}.kashi-hfadmin .pill.f{background:#e7f6ee;color:#0a6b3c}
 				.kashi-hfadmin .pill.d{background:#fcf0e3;color:#8a4b00}
 			</style>
-			<h1>هدر و فوتر</h1>
-			<p>هدر و فوتر سایت را با کاشی بسازید؛ جای هدر و فوتر قالب را می‌گیرد و با هر قالبی کار می‌کند. می‌توانید برای صفحه‌های مختلف هدر/فوتر جدا داشته باشید.</p>
+			<h1><?php echo esc_html( self::t( 'هدر و فوتر' ) ); ?></h1>
+			<p><?php echo esc_html( self::t( 'هدر و فوتر سایت را با کاشی بسازید؛ جای هدر و فوتر قالب را می‌گیرد و با هر قالبی کار می‌کند. می‌توانید برای صفحه‌های مختلف هدر/فوتر جدا داشته باشید.' ) ); ?></p>
 			<div class="cards">
 				<div class="card2">
 					<div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b5af2" stroke-width="1.8"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg></div>
-					<div><h2>هدر جدید</h2><p>بالای همه صفحه‌ها، به‌جای هدر قالب.</p>
-					<a class="button button-primary" href="<?php echo esc_url( self::new_url( 'header' ) ); ?>">ساخت هدر</a></div>
+					<div><h2><?php echo esc_html( self::t( 'هدر جدید' ) ); ?></h2><p><?php echo esc_html( self::t( 'بالای همه صفحه‌ها، به‌جای هدر قالب.' ) ); ?></p>
+					<a class="button button-primary" href="<?php echo esc_url( self::new_url( 'header' ) ); ?>"><?php echo esc_html( self::t( 'ساخت هدر' ) ); ?></a></div>
 				</div>
 				<div class="card2">
 					<div class="ico" style="background:#e7f6ee"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a6b3c" stroke-width="1.8"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></svg></div>
-					<div><h2>فوتر جدید</h2><p>پایین همه صفحه‌ها، به‌جای فوتر قالب.</p>
-					<a class="button button-primary" href="<?php echo esc_url( self::new_url( 'footer' ) ); ?>">ساخت فوتر</a></div>
+					<div><h2><?php echo esc_html( self::t( 'فوتر جدید' ) ); ?></h2><p><?php echo esc_html( self::t( 'پایین همه صفحه‌ها، به‌جای فوتر قالب.' ) ); ?></p>
+					<a class="button button-primary" href="<?php echo esc_url( self::new_url( 'footer' ) ); ?>"><?php echo esc_html( self::t( 'ساخت فوتر' ) ); ?></a></div>
 				</div>
 			</div>
-			<h2>هدر و فوترهای شما</h2>
+			<h2><?php echo esc_html( self::t( 'هدر و فوترهای شما' ) ); ?></h2>
 			<?php if ( ! $tiles ) : ?>
-				<p>هنوز هدر یا فوتری نساخته‌اید. با دکمه‌های بالا شروع کنید.</p>
+				<p><?php echo esc_html( self::t( 'هنوز هدر یا فوتری نساخته‌اید. با دکمه‌های بالا شروع کنید.' ) ); ?></p>
 			<?php else : ?>
 			<table class="widefat striped">
-				<thead><tr><th>نام</th><th>محل</th><th>کجا نمایش داده می‌شود</th><th>وضعیت</th><th></th></tr></thead>
+				<thead><tr><th><?php echo esc_html( self::t( 'نام' ) ); ?></th><th><?php echo esc_html( self::t( 'محل' ) ); ?></th><th><?php echo esc_html( self::t( 'کجا نمایش داده می‌شود' ) ); ?></th><th><?php echo esc_html( self::t( 'وضعیت' ) ); ?></th><th></th></tr></thead>
 				<tbody>
 				<?php
 				foreach ( $tiles as $t ) :
 					$m    = self::hf_meta( $t->ID );
 					$cond = isset( $modes[ $m['mode'] ] ) ? $modes[ $m['mode'] ] : $modes['all'];
 					if ( in_array( $m['mode'], array( 'include', 'exclude' ), true ) ) {
-						$cond .= implode( '، ', array_map( 'intval', $m['ids'] ) );
+						$cond .= implode( self::t( '، ' ), array_map( 'intval', $m['ids'] ) );
 					}
 					?>
 					<tr>
-						<td><strong><?php echo esc_html( $t->post_title ? $t->post_title : '(بدون نام)' ); ?></strong></td>
-						<td><?php echo 'header' === $m['location'] ? '<span class="pill h">هدر</span>' : '<span class="pill f">فوتر</span>'; ?></td>
+						<td><strong><?php echo esc_html( $t->post_title ? $t->post_title : self::t( '(بدون نام)' ) ); ?></strong></td>
+						<td><?php echo 'header' === $m['location'] ? '<span class="pill h">' . self::t( 'هدر' ) . '</span>' : '<span class="pill f">' . self::t( 'فوتر' ) . '</span>'; ?></td>
 						<td><?php echo esc_html( $cond ); ?></td>
-						<td><?php echo 'publish' === $t->post_status ? '<span class="pill">فعال</span>' : '<span class="pill d">پیش‌نویس — هنوز نمایش داده نمی‌شود</span>'; ?></td>
-						<td><a class="button" href="<?php echo esc_url( self::editor_url( $t->ID ) ); ?>">ویرایش با کاشی</a></td>
+						<td><?php echo 'publish' === $t->post_status ? '<span class="pill">' . self::t( 'فعال' ) . '</span>' : '<span class="pill d">' . self::t( 'پیش‌نویس — هنوز نمایش داده نمی‌شود' ) . '</span>'; ?></td>
+						<td><a class="button" href="<?php echo esc_url( self::editor_url( $t->ID ) ); ?>"><?php echo esc_html( self::t( 'ویرایش با کاشی' ) ); ?></a></td>
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
 			</table>
 			<?php endif; ?>
-			<p class="description" style="margin-top:16px">نکته: اگر هدر/فوتر قالب‌تان با المنتور یا صفحه‌ساز دیگری ساخته شده، آن را در تنظیمات قالب خاموش کنید تا فایل‌هایش بیهوده لود نشوند. اگر قالب تگ &lt;header&gt; ندارد، در ویرایشگر کاشی ← «محل نمایش» ← «المان قالب» شناسه آن را بنویسید (مثلاً #masthead).</p>
+			<p class="description" style="margin-top:16px"><?php echo esc_html( self::t( 'نکته: اگر هدر/فوتر قالب‌تان با المنتور یا صفحه‌ساز دیگری ساخته شده، آن را در تنظیمات قالب خاموش کنید تا فایل‌هایش بیهوده لود نشوند. اگر قالب تگ &lt;header&gt; ندارد، در ویرایشگر کاشی ← «محل نمایش» ← «المان قالب» شناسه آن را بنویسید (مثلاً #masthead).' ) ); ?></p>
 		</div>
 		<?php
 	}
@@ -1289,7 +1531,7 @@ final class Kashi {
 	public static function new_section() {
 		check_admin_referer( 'kashi_new' );
 		if ( ! current_user_can( 'edit_pages' ) ) {
-			wp_die( 'دسترسی ندارید.' );
+			wp_die( self::t( 'دسترسی ندارید.' ) );
 		}
 		$loc = isset( $_GET['loc'] ) ? sanitize_key( wp_unslash( $_GET['loc'] ) ) : '';
 		$loc = in_array( $loc, array( 'header', 'footer' ), true ) ? $loc : '';
@@ -1297,7 +1539,7 @@ final class Kashi {
 			array(
 				'post_type'   => self::CPT,
 				'post_status' => 'draft',
-				'post_title'  => 'header' === $loc ? 'هدر سایت' : ( 'footer' === $loc ? 'فوتر سایت' : 'کاشی جدید' ),
+				'post_title'  => 'header' === $loc ? self::t( 'هدر سایت' ) : ( 'footer' === $loc ? self::t( 'فوتر سایت' ) : self::t( 'کاشی جدید' ) ),
 			)
 		);
 		if ( is_wp_error( $id ) ) {
@@ -1316,7 +1558,7 @@ final class Kashi {
 	 * ================================================================== */
 	public static function row_actions( $actions, $post ) {
 		if ( in_array( $post->post_type, self::post_types(), true ) && current_user_can( 'edit_post', $post->ID ) ) {
-			$actions = array( 'kashi_edit' => '<a href="' . esc_url( self::editor_url( $post->ID ) ) . '" style="font-weight:600">ویرایش با کاشی</a>' ) + $actions;
+			$actions = array( 'kashi_edit' => '<a href="' . esc_url( self::editor_url( $post->ID ) ) . '" style="font-weight:600">' . self::t( 'ویرایش با کاشی' ) . '</a>' ) + $actions;
 		}
 		return $actions;
 	}
@@ -1325,41 +1567,41 @@ final class Kashi {
 		if ( self::CPT === $post->post_type ) {
 			$loc = get_post_meta( $post->ID, '_lsec_location', true );
 			if ( 'header' === $loc ) {
-				$states['kashi_hf'] = 'هدر سایت';
+				$states['kashi_hf'] = self::t( 'هدر سایت' );
 			} elseif ( 'footer' === $loc ) {
-				$states['kashi_hf'] = 'فوتر سایت';
+				$states['kashi_hf'] = self::t( 'فوتر سایت' );
 			}
 			return $states;
 		}
 		if ( self::CPT !== $post->post_type && '1' === get_post_meta( $post->ID, '_lsec_enabled', true ) ) {
-			$states['kashi'] = 'کاشی';
+			$states['kashi'] = self::t( 'کاشی' );
 		}
 		return $states;
 	}
 
 	public static function add_meta_boxes() {
 		foreach ( self::post_types() as $type ) {
-			add_meta_box( 'kashi_box', 'کاشی', array( __CLASS__, 'render_meta_box' ), $type, self::CPT === $type ? 'normal' : 'side', 'high' );
+			add_meta_box( 'kashi_box', self::t( 'کاشی' ), array( __CLASS__, 'render_meta_box' ), $type, self::CPT === $type ? 'normal' : 'side', 'high' );
 		}
 	}
 
 	public static function render_meta_box( $post ) {
 		wp_nonce_field( 'kashi_box', 'kashi_box_nonce' );
 
-		echo '<p><a class="button button-primary button-large" style="width:100%;text-align:center" href="' . esc_url( self::editor_url( $post->ID ) ) . '">ویرایش با کاشی</a></p>';
+		echo '<p><a class="button button-primary button-large" style="width:100%;text-align:center" href="' . esc_url( self::editor_url( $post->ID ) ) . '">' . self::t( 'ویرایش با کاشی' ) . '</a></p>';
 
 		if ( self::CPT === $post->post_type ) {
-			echo '<p>شورت‌کد: <code>[kashi id="' . (int) $post->ID . '"]</code></p>';
+			echo '<p>' . self::t( 'شورت‌کد: ' ) . '<code>[kashi id="' . (int) $post->ID . '"]</code></p>';
 			return;
 		}
 
 		if ( self::get_blocks( $post->ID ) ) {
 			$enabled = ( '1' === get_post_meta( $post->ID, '_lsec_enabled', true ) );
-			echo '<p><label><input type="checkbox" name="kashi_enabled" value="1" ' . checked( $enabled, true, false ) . '> نمایش محتوای کاشی به‌جای محتوای این ویرایشگر</label></p>';
+			echo '<p><label><input type="checkbox" name="kashi_enabled" value="1" ' . checked( $enabled, true, false ) . '>' . self::t( ' نمایش محتوای کاشی به‌جای محتوای این ویرایشگر' ) . '</label></p>';
 			echo '<input type="hidden" name="kashi_enabled_present" value="1">';
-			echo '<p class="description">متن این برگه با هر ذخیره در کاشی خودکار در محتوای اصلی هم کپی می‌شود تا افزونه‌های سئو و جستجوی سایت آن را ببینند. ویرایش محتوا در این ویرایشگر روی نمایش سایت اثری ندارد.</p>';
+			echo '<p class="description">' . self::t( 'متن این برگه با هر ذخیره در کاشی خودکار در محتوای اصلی هم کپی می‌شود تا افزونه‌های سئو و جستجوی سایت آن را ببینند. ویرایش محتوا در این ویرایشگر روی نمایش سایت اثری ندارد.' ) . '</p>';
 		} else {
-			echo '<p class="description">با زدن دکمه، ویرایشگر زنده برای این برگه باز می‌شود.</p>';
+			echo '<p class="description">' . self::t( 'با زدن دکمه، ویرایشگر زنده برای این برگه باز می‌شود.' ) . '</p>';
 		}
 	}
 
@@ -1381,7 +1623,7 @@ final class Kashi {
 		foreach ( $columns as $key => $label ) {
 			$new[ $key ] = $label;
 			if ( 'title' === $key ) {
-				$new['kashi_shortcode'] = 'شورت‌کد';
+				$new['kashi_shortcode'] = self::t( 'شورت‌کد' );
 			}
 		}
 		return $new;
@@ -1407,7 +1649,7 @@ final class Kashi {
 		$bar->add_node(
 			array(
 				'id'    => 'kashi-edit',
-				'title' => 'ویرایش با کاشی',
+				'title' => self::t( 'ویرایش با کاشی' ),
 				'href'  => self::editor_url( $id ),
 			)
 		);
@@ -1420,7 +1662,7 @@ final class Kashi {
 		$id   = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$post = $id ? get_post( $id ) : null;
 		if ( ! $post || ! in_array( $post->post_type, self::post_types(), true ) || ! current_user_can( 'edit_post', $id ) ) {
-			wp_die( 'این مورد پیدا نشد یا اجازه ویرایش آن را ندارید.' );
+			wp_die( self::t( 'این مورد پیدا نشد یا اجازه ویرایش آن را ندارید.' ) );
 		}
 
 		$settings = wp_enqueue_code_editor( array( 'type' => 'text/html' ) );
@@ -1442,6 +1684,12 @@ final class Kashi {
 			'isSection' => self::CPT === $post->post_type,
 			'seoPlugin' => self::seo_plugin_name(),
 			'icons'     => plugins_url( 'assets/icons.json', KASHI_FILE ) . '?v=' . self::VERSION,
+			'i18n'      => (object) self::dict(),
+			'lang'      => self::lang(),
+			'locale'    => self::locale_tag(),
+			'dir'       => self::dir(),
+			'cal'       => self::calendar(),
+			'tz'        => self::timezone(),
 		);
 		$is_section = ( self::CPT === $post->post_type );
 		$layout     = self::saved_layout( $id );
@@ -1449,15 +1697,15 @@ final class Kashi {
 
 		nocache_headers();
 		?><!DOCTYPE html>
-<html dir="rtl" lang="fa">
+<html dir="<?php echo esc_attr( self::dir() ); ?>" lang="<?php echo esc_attr( self::locale_tag() ); ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title><?php echo esc_html( 'ویرایش: ' . get_the_title( $post ) ); ?></title>
+<title><?php echo esc_html( self::t( 'ویرایش: ' ) . get_the_title( $post ) ); ?></title>
 <?php wp_print_styles(); ?>
 <style>
 @font-face{font-family:"Vazirmatn";src:url(<?php echo esc_url( plugins_url( 'assets/fonts/vazirmatn.woff2', KASHI_FILE ) ); ?>) format("woff2");font-weight:100 900;font-display:swap}
-:root{
+:root{--dir:<?php echo esc_attr( self::dir() ); ?>;
 	--bg:#0d0f14;--panel:#13161d;--panel2:#191d26;--hover:#20252f;--line:#232834;--line2:#2e3442;
 	--text:#e6e8ee;--muted:#8b92a5;--dim:#80879a;
 	--accent:#6b5af2;--accent-h:#5b4ae0;--accent-soft:rgba(124,108,255,.14);--accent-line:rgba(124,108,255,.45);
@@ -1492,7 +1740,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .sw:hover{color:var(--text)}
 .sw input{position:absolute;opacity:0;pointer-events:none}
 .sw i{position:relative;width:28px;height:16px;border-radius:99px;background:var(--line2);transition:background .2s}
-.sw i::after{content:"";position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw i::after{content:"";position:absolute;top:2px;inset-inline-start:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .2s}
 .sw input:checked+i{background:var(--accent)}
 .sw input:checked+i::after{transform:translateX(-12px)}
 .sw input:focus-visible+i{box-shadow:0 0 0 2px var(--accent-line)}
@@ -1538,7 +1786,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-drag .kashi-view iframe{pointer-events:none}
 
 /* ---------- لیست بخش‌ها ---------- */
-.kashi-blocks{direction:rtl;max-height:44%;display:flex;flex-direction:column;border-bottom:1px solid var(--line)}
+.kashi-blocks{direction:var(--dir);max-height:44%;display:flex;flex-direction:column;border-bottom:1px solid var(--line)}
 .kashi-blocks-head{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 8px}
 .kashi-blocks-head .t{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
 .kashi-blocks-head .t small{font-weight:500;color:var(--dim);background:var(--panel2);border-radius:99px;padding:1px 8px;font-size:11px}
@@ -1570,14 +1818,56 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-item .sch.live{background:rgba(52,201,138,.12);border-color:rgba(52,201,138,.45);color:var(--ok)}
 .kashi-item .sch.ended{background:rgba(240,85,92,.1);border-color:rgba(240,85,92,.4);color:#ff9ea2}
 .kashi-dvpop.kashi-schpop{width:370px}
-.kashi-schpop .jp{display:flex;gap:4px;margin:2px 0 8px;direction:rtl}
+.kashi-schpop .jp{display:flex;gap:4px;margin:2px 0 8px;direction:var(--dir)}
 .kashi-schpop .jp.off{opacity:.35;pointer-events:none}
 .kashi-schpop .jp select,.kashi-schpop .jp input{height:32px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--text);font:inherit;font-size:12.5px;padding:0 6px}
 .kashi-schpop .jp select{flex:1 1 auto;min-width:0}
 .kashi-schpop .jp select[data-f=m]{flex:2 1 auto}
-.kashi-schpop .jp input{direction:ltr;flex:0 0 104px;width:104px}
+.kashi-schpop .jp input{direction:ltr;flex:0 0 118px;width:118px}
 .kashi-schpop .schmsg{margin-top:6px;font-size:12px;color:var(--ok)}.kashi-schpop .schmsg.err{color:var(--err)}
-.kashi-dvpop{position:fixed;z-index:80;width:270px;direction:rtl;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:12px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)}
+.kashi-dvpop.kashi-stpop{width:380px;max-height:calc(100vh - 24px);overflow:auto;padding:0}
+.kashi-stpop .sttop{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;position:sticky;top:0;background:var(--panel);z-index:2}
+.kashi-stpop .sttop b{font-size:13.5px}
+.kashi-stpop .stx{width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}.kashi-stpop .stx:hover{background:var(--hover);color:var(--text)}
+.kashi-stpop .stdevs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:0 16px 6px;padding:3px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.kashi-stpop .stdevs button{display:flex;flex-direction:column;align-items:center;gap:2px;height:44px;justify-content:center;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:10.5px;cursor:pointer}
+.kashi-stpop .stdevs button.on{background:var(--panel2);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 0 0 1px var(--accent-line)}
+.kashi-stpop .stsec{margin:14px 16px 6px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.kashi-stpop .stbox{margin:0 16px 12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent)}
+.kashi-stpop .sthd{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.kashi-stpop .sthd b{font-size:12.5px}.kashi-stpop .sthd .ic{width:13px;height:13px;color:var(--muted)}
+.kashi-stpop .sthd select{margin-inline-start:auto;height:24px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);color:var(--text);font-size:11px;padding:0 4px;direction:ltr}
+.kashi-stpop .stin{display:grid;grid-template-columns:repeat(4,1fr) 34px;gap:0;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.kashi-stpop .stin label{display:flex;flex-direction:column;border-inline-end:1px solid var(--line2)}
+.kashi-stpop .stin input{width:100%;height:32px;border:0;background:var(--bg);color:var(--text);text-align:center;font:inherit;font-size:13px;direction:ltr;-moz-appearance:textfield}
+.kashi-stpop .stin input::-webkit-inner-spin-button{display:none}
+.kashi-stpop .stin input:focus{outline:0;background:#151926;box-shadow:inset 0 -2px 0 var(--accent)}
+.kashi-stpop .stin span{display:block;text-align:center;font-size:10.5px;color:var(--dim);padding:3px 0 4px;background:var(--panel2)}
+.kashi-stpop .stlink{display:flex;align-items:center;justify-content:center;border:0;background:var(--panel2);color:var(--muted);cursor:pointer}
+.kashi-stpop .stlink.on{background:var(--accent-soft);color:#fff}
+.kashi-stpop .stlink .ic{width:15px;height:15px}
+.kashi-stpop .strow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 16px 8px;font-size:12.5px}
+.kashi-stpop .strow>div{display:flex;gap:4px;align-items:center}
+.kashi-stpop .strow input[type=number],.kashi-stpop .strow .stt{width:84px;height:30px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--text);padding:0 8px;font:inherit;direction:ltr}
+.kashi-stpop .strow .stt{width:170px}
+.kashi-stpop .strow select{height:30px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--text);font-size:11.5px;direction:ltr}
+.kashi-stpop .stcolor{position:relative;width:46px;height:30px;border:1px solid var(--line2);border-radius:7px;overflow:hidden;cursor:pointer;background:repeating-conic-gradient(#2a2f3b 0 25%,#1b1f29 0 50%) 0 0/10px 10px}
+.kashi-stpop .stcolor input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.kashi-stpop .stcolor i{position:absolute;inset:3px;border-radius:4px}
+.kashi-stpop .stclr,.kashi-stpop .streset{height:30px;padding:0 10px;border:1px solid var(--line2);border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;font:inherit;font-size:12px}
+.kashi-stpop .stclr:hover,.kashi-stpop .streset:hover{color:var(--err);border-color:rgba(240,85,92,.5)}
+.kashi-stpop .hint{margin:4px 16px 0}
+.kashi-stpop .stfoot{display:flex;justify-content:flex-end;padding:10px 16px 14px}
+.kashi-item.styled .n{box-shadow:0 0 0 2px var(--accent-line)}
+.kashi-item.styled .acts button[data-a=style]{color:#b3a9ff}
+.kashi-exit{position:relative}
+.kashi-exit .menu{position:absolute;top:40px;inset-inline-start:0;z-index:90;display:none;min-width:230px;padding:6px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)}
+.kashi-exit.open .menu{display:block}
+.kashi-exit .menu a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--text);text-decoration:none;font-size:12.5px}
+.kashi-exit .menu a:hover{background:var(--hover)}
+.kashi-exit .menu a .ic{color:var(--muted)}
+.kashi-exit .menu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+.kashi-dvpop{position:fixed;z-index:80;width:270px;direction:var(--dir);background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:12px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)}
 .kashi-dvpop>b{display:block;font-size:13px;margin:0 2px 8px}
 .kashi-dvpop .dvr{display:flex;justify-content:space-between;width:100%;height:auto;padding:7px 4px;color:var(--text);white-space:normal}
 .kashi-dvpop .dvl{display:flex;align-items:center;gap:10px}
@@ -1595,12 +1885,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-item .acts button:hover{background:var(--hover);color:var(--text)}
 .kashi-item .acts button[data-a=del]:hover{background:rgba(240,85,92,.15);color:var(--err)}
 
-#kashi-cur{direction:rtl;display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;color:var(--muted);font-size:12px;background:var(--bg);border-bottom:1px solid var(--line)}
+#kashi-cur{direction:var(--dir);display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;color:var(--muted);font-size:12px;background:var(--bg);border-bottom:1px solid var(--line)}
 #kashi-cur .ic{color:var(--accent);width:14px;height:14px}
 #kashi-cur b{color:var(--text);font-weight:600}
 #kashi-cur .kind .kc{display:inline-block;margin:0 2px;padding:0 6px;border-radius:6px;background:var(--accent-soft);color:#e8e6ff;font-weight:600}
-#kashi-cur .kind{margin-right:auto;font-size:11.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:2px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
-#kashi-warn{direction:rtl;display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(240,85,92,.1);border-bottom:1px solid rgba(240,85,92,.25);color:#ffb3b6;font-size:12px;line-height:1.8}
+#kashi-cur .kind{margin-inline-start:auto;font-size:11.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:2px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+#kashi-warn{direction:var(--dir);display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(240,85,92,.1);border-bottom:1px solid rgba(240,85,92,.25);color:#ffb3b6;font-size:12px;line-height:1.8}
 #kashi-warn .ic{color:var(--err);margin-top:3px}
 #kashi-warn code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px;direction:ltr;display:inline-block}
 
@@ -1630,7 +1920,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-code .CodeMirror-lint-marker-error,.kashi-code .CodeMirror-lint-marker-warning{filter:saturate(.8)}
 
 /* ---------- پنل‌های شناور ---------- */
-.kashi-settings{position:absolute;top:62px;right:12px;width:340px;max-height:calc(100vh - 80px);overflow:auto;z-index:50;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:16px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.3);display:none;transform-origin:top right}
+.kashi-settings{position:absolute;top:62px;inset-inline-start:12px;width:340px;max-height:calc(100vh - 80px);overflow:auto;z-index:50;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:16px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.3);display:none;transform-origin:top right}
 .kashi-settings.open{display:block;animation:kashi-in .16s ease-out}
 @keyframes kashi-in{from{opacity:0;transform:translateY(-4px) scale(.98)}}
 .kashi-settings h3{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:14px;font-weight:700}
@@ -1669,12 +1959,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-igrid button:hover,.kashi-igrid button:focus-visible{background:var(--accent-soft);border-color:var(--accent-line)}
 .kashi-igrid button svg{width:26px;height:26px}
 #kashi-iname{min-height:20px;margin:6px 2px 0;color:var(--text);font-size:12.5px;font-weight:600}
-.kashi-search .ic{position:absolute;top:9px;right:10px;color:var(--dim)}
+.kashi-search .ic{position:absolute;top:9px;inset-inline-start:10px;color:var(--dim)}
 .kashi-sel,.kashi-in{height:32px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:0 10px;min-width:160px}
 .kashi-in{direction:ltr;text-align:left;width:170px}
 .kashi-sel:focus,.kashi-in:focus{outline:0;border-color:var(--accent-line)}
 .kashi-settings .hint code{direction:ltr;display:inline-block;background:rgba(255,255,255,.06);padding:0 5px;border-radius:4px}
-#kashi-lsearch,#kashi-isearch{width:100%;height:34px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:0 34px 0 10px}
+#kashi-lsearch,#kashi-isearch{width:100%;height:34px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding-block:0;padding-inline:34px 10px}
 #kashi-lsearch:focus,#kashi-isearch:focus{outline:0;border-color:var(--accent-line)}
 
 .kashi-chk{display:flex;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:3px;line-height:1.7}
@@ -1692,108 +1982,124 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-toast.ok .ic{color:var(--ok)}.kashi-toast.err{border-color:rgba(240,85,92,.4)}.kashi-toast.err .ic{color:var(--err)}
 
 @media (max-width:1360px){.tb span:not(.kashi-badge){display:none}.ttl input{width:150px}}
+
+[dir=ltr] .sw input:checked+i::after{transform:translateX(12px)}
+[dir=ltr] .kashi-settings{transform-origin:top left}
+[dir=ltr] #kashi-exitbtn .ic,[dir=ltr] .kashi-exit .menu a:first-child .ic{transform:scaleX(-1)}
 </style>
 </head>
 <body>
 <?php self::print_icon_sprite(); ?>
 <div class="kashi-bar">
 	<div class="g">
-		<a class="ib" href="<?php echo esc_url( $back ); ?>" title="بازگشت به پیشخوان"><?php self::icon( 'arrow-right' ); ?></a>
-		<div class="ttl"><input type="text" id="kashi-title" value="<?php echo esc_attr( $post->post_title ); ?>" placeholder="عنوان"></div>
+		<div class="kashi-exit" id="kashi-exit">
+			<button type="button" class="ib" id="kashi-exitbtn" aria-haspopup="true" aria-expanded="false" title="<?php echo esc_attr( self::t( 'خروج' ) ); ?>"><?php self::icon( 'arrow-right' ); ?></button>
+			<div class="menu" role="menu">
+				<a role="menuitem" href="<?php echo esc_url( $back ); ?>"><?php self::icon( 'arrow-right' ); ?><?php echo esc_html( self::t( 'خروج به پیشخوان' ) ); ?></a>
+				<a role="menuitem" href="<?php echo esc_url( $view ); ?>"><?php self::icon( 'external' ); ?><?php echo esc_html( self::t( 'خروج و مشاهده صفحه' ) ); ?></a>
+				<?php if ( self::CPT !== $post->post_type ) : ?>
+				<a role="menuitem" href="<?php echo esc_url( (string) get_edit_post_link( $id, 'raw' ) ); ?>"><?php self::icon( 'pen' ); ?><?php echo esc_html( self::t( 'ویرایشگر وردپرس' ) ); ?></a>
+				<?php endif; ?>
+				<hr>
+				<a role="menuitem" href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . self::CPT ) ); ?>"><?php self::icon( 'layers' ); ?><?php echo esc_html( self::t( 'کتابخانه کاشی' ) ); ?></a>
+				<a role="menuitem" href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . self::CPT . '&page=kashi-settings' ) ); ?>"><?php self::icon( 'sliders' ); ?><?php echo esc_html( self::t( 'تنظیمات' ) ); ?></a>
+			</div>
+		</div>
+		<div class="ttl"><input type="text" id="kashi-title" value="<?php echo esc_attr( $post->post_title ); ?>" placeholder="<?php echo esc_attr( self::t( 'عنوان' ) ); ?>"></div>
 		<span class="vr"></span>
 		<?php if ( ! $is_section ) : ?>
-		<button type="button" class="tb" id="kashi-gear" title="تنظیمات صفحه"><?php self::icon( 'sliders' ); ?><span>تنظیمات صفحه</span></button>
+		<button type="button" class="tb" id="kashi-gear" title="<?php echo esc_attr( self::t( 'تنظیمات صفحه' ) ); ?>"><?php self::icon( 'sliders' ); ?><span><?php echo esc_html( self::t( 'تنظیمات صفحه' ) ); ?></span></button>
 		<?php else : ?>
-		<button type="button" class="tb" id="kashi-hfbtn" title="محل نمایش این کاشی"><?php self::icon( 'panel-top' ); ?><span>محل نمایش</span></button>
+		<button type="button" class="tb" id="kashi-hfbtn" title="<?php echo esc_attr( self::t( 'محل نمایش این کاشی' ) ); ?>"><?php self::icon( 'panel-top' ); ?><span><?php echo esc_html( self::t( 'محل نمایش' ) ); ?></span></button>
 		<?php endif; ?>
-		<button type="button" class="tb" id="kashi-hist" title="تاریخچه نسخه‌ها"><?php self::icon( 'history' ); ?><span>تاریخچه</span></button>
-		<button type="button" class="tb" id="kashi-vedit" title="ویرایش مستقیم متن، لینک و تصویر داخل پیش‌نمایش"><?php self::icon( 'pen' ); ?><span>ویرایش مستقیم</span></button>
-		<button type="button" class="tb" id="kashi-seo" title="بررسی سئو"><?php self::icon( 'gauge' ); ?><span>سئو</span><span id="kashi-seo-n" class="kashi-badge"></span></button>
+		<button type="button" class="tb" id="kashi-hist" title="<?php echo esc_attr( self::t( 'تاریخچه نسخه‌ها' ) ); ?>"><?php self::icon( 'history' ); ?><span><?php echo esc_html( self::t( 'تاریخچه' ) ); ?></span></button>
+		<button type="button" class="tb" id="kashi-vedit" title="<?php echo esc_attr( self::t( 'ویرایش مستقیم متن، لینک و تصویر داخل پیش‌نمایش' ) ); ?>"><?php self::icon( 'pen' ); ?><span><?php echo esc_html( self::t( 'ویرایش مستقیم' ) ); ?></span></button>
+		<button type="button" class="tb" id="kashi-seo" title="<?php echo esc_attr( self::t( 'بررسی سئو' ) ); ?>"><?php self::icon( 'gauge' ); ?><span><?php echo esc_html( self::t( 'سئو' ) ); ?></span><span id="kashi-seo-n" class="kashi-badge"></span></button>
 	</div>
 	<span class="kashi-sep"></span>
 	<div class="g">
 		<div class="seg kashi-dev">
-			<button type="button" data-w="1440" class="on" aria-pressed="true" title="دسکتاپ (۱۴۴۰)"><?php self::icon( 'monitor' ); ?></button>
-			<button type="button" data-w="1280" aria-pressed="false" title="لپ‌تاپ (۱۲۸۰)"><?php self::icon( 'laptop' ); ?></button>
-			<button type="button" data-w="768" aria-pressed="false" title="تبلت (۷۶۸)"><?php self::icon( 'tablet' ); ?></button>
-			<button type="button" data-w="390" aria-pressed="false" title="موبایل (۳۹۰)"><?php self::icon( 'phone' ); ?></button>
+			<button type="button" data-w="1440" class="on" aria-pressed="true" title="<?php echo esc_attr( self::t( 'دسکتاپ (۱۴۴۰)' ) ); ?>"><?php self::icon( 'monitor' ); ?></button>
+			<button type="button" data-w="1280" aria-pressed="false" title="<?php echo esc_attr( self::t( 'لپ‌تاپ (۱۲۸۰)' ) ); ?>"><?php self::icon( 'laptop' ); ?></button>
+			<button type="button" data-w="768" aria-pressed="false" title="<?php echo esc_attr( self::t( 'تبلت (۷۶۸)' ) ); ?>"><?php self::icon( 'tablet' ); ?></button>
+			<button type="button" data-w="390" aria-pressed="false" title="<?php echo esc_attr( self::t( 'موبایل (۳۹۰)' ) ); ?>"><?php self::icon( 'phone' ); ?></button>
 		</div>
-		<label class="ib tog" title="پیش‌نمایش زنده: با هر تغییر به‌روز شود"><input type="checkbox" id="kashi-auto" checked aria-label="پیش‌نمایش زنده"><?php self::icon( 'zap' ); ?></label>
-		<button type="button" class="ib" id="kashi-refresh" title="بروزرسانی پیش‌نمایش"><?php self::icon( 'refresh' ); ?></button>
-		<a class="ib" href="<?php echo esc_url( $view ); ?>" target="_blank" title="مشاهده در سایت"><?php self::icon( 'external' ); ?></a>
+		<label class="ib tog" title="<?php echo esc_attr( self::t( 'پیش‌نمایش زنده: با هر تغییر به‌روز شود' ) ); ?>"><input type="checkbox" id="kashi-auto" checked aria-label="<?php echo esc_attr( self::t( 'پیش‌نمایش زنده' ) ); ?>"><?php self::icon( 'zap' ); ?></label>
+		<button type="button" class="ib" id="kashi-refresh" title="<?php echo esc_attr( self::t( 'بروزرسانی پیش‌نمایش' ) ); ?>"><?php self::icon( 'refresh' ); ?></button>
+		<a class="ib" href="<?php echo esc_url( $view ); ?>" target="_blank" title="<?php echo esc_attr( self::t( 'مشاهده در سایت' ) ); ?>"><?php self::icon( 'external' ); ?></a>
 		<span class="vr"></span>
-		<span id="kashi-status" class="st">ذخیره شده</span>
-		<button type="button" id="kashi-save" class="primary"><?php self::icon( 'save' ); ?><span>ذخیره</span><kbd>Ctrl S</kbd></button>
+		<span id="kashi-status" class="st"><?php echo esc_html( self::t( 'ذخیره شده' ) ); ?></span>
+		<button type="button" id="kashi-save" class="primary"><?php self::icon( 'save' ); ?><span><?php echo esc_html( self::t( 'ذخیره' ) ); ?></span><kbd>Ctrl S</kbd></button>
 	</div>
 </div>
 <?php if ( ! $is_section ) : ?>
 <div class="kashi-settings" id="kashi-settings">
-	<h3><?php self::icon( 'sliders' ); ?>طرح‌بندی صفحه</h3>
+	<h3><?php self::icon( 'sliders' ); ?><?php echo esc_html( self::t( 'طرح‌بندی صفحه' ) ); ?></h3>
 	<label class="opt" data-layout="full"><input type="radio" name="kashi_layout" value="full" <?php checked( $layout, 'full' ); ?>>
 		<span class="oi"><?php self::icon( 'layout-full' ); ?></span>
-		<span><b>تمام‌عرض</b><small>هدر و فوتر سایت می‌ماند؛ بدون عنوان، ستون کناری و کانتینر قالب.</small></span></label>
+		<span><b><?php echo esc_html( self::t( 'تمام‌عرض' ) ); ?></b><small><?php echo esc_html( self::t( 'هدر و فوتر سایت می‌ماند؛ بدون عنوان، ستون کناری و کانتینر قالب.' ) ); ?></small></span></label>
 	<label class="opt" data-layout="canvas"><input type="radio" name="kashi_layout" value="canvas" <?php checked( $layout, 'canvas' ); ?>>
 		<span class="oi"><?php self::icon( 'layout-canvas' ); ?></span>
-		<span><b>بوم خالی</b><small>بدون هدر و فوتر؛ فقط بخش‌های شما. مناسب لندینگ‌پیج.</small></span></label>
+		<span><b><?php echo esc_html( self::t( 'بوم خالی' ) ); ?></b><small><?php echo esc_html( self::t( 'بدون هدر و فوتر؛ فقط بخش‌های شما. مناسب لندینگ‌پیج.' ) ); ?></small></span></label>
 	<label class="opt" data-layout="default"><input type="radio" name="kashi_layout" value="default" <?php checked( $layout, 'default' ); ?>>
 		<span class="oi"><?php self::icon( 'layout-default' ); ?></span>
-		<span><b>پیش‌فرض قالب</b><small>همان چیدمان قالب <?php echo esc_html( wp_get_theme()->get( 'Name' ) ); ?> با کانتینر و تنظیمات خودش.</small></span></label>
-	<div class="row"><span>عرض کانتینر بخش‌ها</span><input type="number" id="kashi-boxw" min="320" max="3000" step="10" value="<?php echo (int) $boxw; ?>"></div>
-	<div class="hint">بخش‌هایی که «تمام‌عرض» نیستند در این عرض (پیکسل) وسط‌چین می‌شوند.</div>
-	<label class="swrow sw"><span><b>محدود کردن CSS</b><small>استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند.</small></span><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i></label>
+		<span><b><?php echo esc_html( self::t( 'پیش‌فرض قالب' ) ); ?></b><small><?php echo esc_html( self::t( 'همان چیدمان قالب' ) ); ?> <?php echo esc_html( wp_get_theme()->get( 'Name' ) ); ?> <?php echo esc_html( self::t( 'با کانتینر و تنظیمات خودش.' ) ); ?></small></span></label>
+	<div class="row"><span><?php echo esc_html( self::t( 'عرض کانتینر بخش‌ها' ) ); ?></span><input type="number" id="kashi-boxw" min="320" max="3000" step="10" value="<?php echo (int) $boxw; ?>"></div>
+	<div class="hint"><?php echo esc_html( self::t( 'بخش‌هایی که «تمام‌عرض» نیستند در این عرض (پیکسل) وسط‌چین می‌شوند.' ) ); ?></div>
+	<label class="swrow sw"><span><b><?php echo esc_html( self::t( 'محدود کردن CSS' ) ); ?></b><small><?php echo esc_html( self::t( 'استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند.' ) ); ?></small></span><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i></label>
 </div>
 <?php endif; ?>
 <?php if ( $is_section ) : $hf = self::hf_meta( $id ); ?>
 <div class="kashi-settings" id="kashi-hfpanel" style="width:380px">
-	<h3><?php self::icon( 'panel-top' ); ?>محل نمایش این کاشی</h3>
+	<h3><?php self::icon( 'panel-top' ); ?><?php echo esc_html( self::t( 'محل نمایش این کاشی' ) ); ?></h3>
 	<label class="opt" data-loc=""><input type="radio" name="kashi_loc" value="" <?php checked( $hf['location'], '' ); ?>>
 		<span class="oi"><?php self::icon( 'layers' ); ?></span>
-		<span><b>کاشی کتابخانه</b><small>فقط جایی نمایش داده می‌شود که درجش کنید (یا با شورت‌کد).</small></span></label>
+		<span><b><?php echo esc_html( self::t( 'کاشی کتابخانه' ) ); ?></b><small><?php echo esc_html( self::t( 'فقط جایی نمایش داده می‌شود که درجش کنید (یا با شورت‌کد).' ) ); ?></small></span></label>
 	<label class="opt" data-loc="header"><input type="radio" name="kashi_loc" value="header" <?php checked( $hf['location'], 'header' ); ?>>
 		<span class="oi"><?php self::icon( 'panel-top' ); ?></span>
-		<span><b>هدر سایت</b><small>جای هدر قالب را می‌گیرد.</small></span></label>
+		<span><b><?php echo esc_html( self::t( 'هدر سایت' ) ); ?></b><small><?php echo esc_html( self::t( 'جای هدر قالب را می‌گیرد.' ) ); ?></small></span></label>
 	<label class="opt" data-loc="footer"><input type="radio" name="kashi_loc" value="footer" <?php checked( $hf['location'], 'footer' ); ?>>
 		<span class="oi"><?php self::icon( 'panel-bottom' ); ?></span>
-		<span><b>فوتر سایت</b><small>جای فوتر قالب را می‌گیرد.</small></span></label>
+		<span><b><?php echo esc_html( self::t( 'فوتر سایت' ) ); ?></b><small><?php echo esc_html( self::t( 'جای فوتر قالب را می‌گیرد.' ) ); ?></small></span></label>
 	<div id="kashi-hfcond">
-		<div class="row"><span>کجا نمایش داده شود؟</span>
+		<div class="row"><span><?php echo esc_html( self::t( 'کجا نمایش داده شود؟' ) ); ?></span>
 			<select id="kashi-hfmode" class="kashi-sel">
-				<option value="all" <?php selected( $hf['mode'], 'all' ); ?>>کل سایت</option>
-				<option value="front" <?php selected( $hf['mode'], 'front' ); ?>>فقط صفحه اصلی</option>
-				<option value="include" <?php selected( $hf['mode'], 'include' ); ?>>فقط این صفحه‌ها</option>
-				<option value="exclude" <?php selected( $hf['mode'], 'exclude' ); ?>>همه‌جا به‌جز این صفحه‌ها</option>
+				<option value="all" <?php selected( $hf['mode'], 'all' ); ?>><?php echo esc_html( self::t( 'کل سایت' ) ); ?></option>
+				<option value="front" <?php selected( $hf['mode'], 'front' ); ?>><?php echo esc_html( self::t( 'فقط صفحه اصلی' ) ); ?></option>
+				<option value="include" <?php selected( $hf['mode'], 'include' ); ?>><?php echo esc_html( self::t( 'فقط این صفحه‌ها' ) ); ?></option>
+				<option value="exclude" <?php selected( $hf['mode'], 'exclude' ); ?>><?php echo esc_html( self::t( 'همه‌جا به‌جز این صفحه‌ها' ) ); ?></option>
 			</select>
 		</div>
-		<div class="row" id="kashi-hfids-row"><span>شناسه صفحه‌ها</span><input type="text" id="kashi-hfids" class="kashi-in" value="<?php echo esc_attr( implode( ', ', $hf['ids'] ) ); ?>" placeholder="مثلاً 12, 418"></div>
-		<div class="row"><span>المان قالب (پیشرفته)</span><input type="text" id="kashi-hftarget" class="kashi-in" value="<?php echo esc_attr( $hf['target'] ); ?>" placeholder="خودکار"></div>
-		<div class="hint">اگر چند هدر/فوتر داشته باشید، دقیق‌ترین شرط برنده است (صفحه‌های مشخص ← صفحه اصلی ← کل سایت). «المان قالب» را فقط وقتی پر کنید که هدر قالب‌تان تگ &lt;header&gt; ندارد؛ مثلاً <code>#masthead</code> یا <code>.site-header</code>.</div>
+		<div class="row" id="kashi-hfids-row"><span><?php echo esc_html( self::t( 'شناسه صفحه‌ها' ) ); ?></span><input type="text" id="kashi-hfids" class="kashi-in" value="<?php echo esc_attr( implode( ', ', $hf['ids'] ) ); ?>" placeholder="<?php echo esc_attr( self::t( 'مثلاً 12, 418' ) ); ?>"></div>
+		<div class="row"><span><?php echo esc_html( self::t( 'المان قالب (پیشرفته)' ) ); ?></span><input type="text" id="kashi-hftarget" class="kashi-in" value="<?php echo esc_attr( $hf['target'] ); ?>" placeholder="<?php echo esc_attr( self::t( 'خودکار' ) ); ?>"></div>
+		<div class="hint"><?php echo esc_html( self::t( 'اگر چند هدر/فوتر داشته باشید، دقیق‌ترین شرط برنده است (صفحه‌های مشخص ← صفحه اصلی ← کل سایت). «المان قالب» را فقط وقتی پر کنید که هدر قالب‌تان تگ &lt;header&gt; ندارد؛ مثلاً' ) ); ?> <code>#masthead</code> <?php echo esc_html( self::t( 'یا' ) ); ?> <code>.site-header</code>.</div>
 	</div>
-	<label class="swrow sw"><span><b>محدود کردن CSS</b><small>استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند.</small></span><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i></label>
+	<label class="swrow sw"><span><b><?php echo esc_html( self::t( 'محدود کردن CSS' ) ); ?></b><small><?php echo esc_html( self::t( 'استایل‌هایی مثل body و * فقط روی همان بخش اثر بگذارند.' ) ); ?></small></span><input type="checkbox" id="kashi-scope" <?php checked( self::scope_on( $id ) ); ?>><i></i></label>
 </div>
 <?php endif; ?>
 <div class="kashi-settings" id="kashi-spanel" style="width:440px">
-	<h3><?php self::icon( 'gauge' ); ?>بررسی سئو</h3>
+	<h3><?php self::icon( 'gauge' ); ?><?php echo esc_html( self::t( 'بررسی سئو' ) ); ?></h3>
 	<div class="hint" id="kashi-seo-info"></div>
 	<div class="kashi-plist" id="kashi-slist"></div>
 </div>
 <div class="kashi-settings" id="kashi-hpanel" style="width:380px">
-	<h3><?php self::icon( 'history' ); ?>تاریخچه نسخه‌ها</h3>
-	<div class="hint">هر ذخیره یک نسخه ثبت می‌کند (<?php echo (int) self::MAX_REVS; ?> نسخه آخر). بازگردانی ابتدا در ویرایشگر اعمال می‌شود؛ برای ثبت، ذخیره کنید.</div>
+	<h3><?php self::icon( 'history' ); ?><?php echo esc_html( self::t( 'تاریخچه نسخه‌ها' ) ); ?></h3>
+	<div class="hint"><?php echo esc_html( self::t( 'هر ذخیره یک نسخه ثبت می‌کند (' ) ); ?><?php echo (int) self::MAX_REVS; ?> <?php echo esc_html( self::t( 'نسخه آخر). بازگردانی ابتدا در ویرایشگر اعمال می‌شود؛ برای ثبت، ذخیره کنید.' ) ); ?></div>
 	<div class="kashi-plist" id="kashi-hlist"></div>
 </div>
-<div class="kashi-settings" id="kashi-ipanel" style="left:12px;right:auto;width:420px;transform-origin:top left">
-	<h3><?php self::icon( 'shapes' ); ?><span id="kashi-ititle">کتابخانه آیکون</span></h3>
-	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-isearch" placeholder="جستجو: تلفن، سبد، واتساپ، کولر…"></div>
-	<div class="kashi-igrp" id="kashi-igrp"><button type="button" data-g="" class="on">همه</button><button type="button" data-g="p">محصولات</button><button type="button" data-g="u">عمومی</button><button type="button" data-g="b">برندها</button></div>
-	<div class="kashi-isz"><span>اندازه</span><div class="seg" id="kashi-isize"><button type="button" data-s="16">16</button><button type="button" data-s="20">20</button><button type="button" data-s="24" class="on">24</button><button type="button" data-s="32">32</button><button type="button" data-s="48">48</button></div></div>
+<div class="kashi-settings" id="kashi-ipanel" style="inset-inline-start:auto;inset-inline-end:12px;width:420px;transform-origin:top left">
+	<h3><?php self::icon( 'shapes' ); ?><span id="kashi-ititle"><?php echo esc_html( self::t( 'کتابخانه آیکون' ) ); ?></span></h3>
+	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-isearch" placeholder="<?php echo esc_attr( self::t( 'جستجو: تلفن، سبد، واتساپ، کولر…' ) ); ?>"></div>
+	<div class="kashi-igrp" id="kashi-igrp"><button type="button" data-g="" class="on"><?php echo esc_html( self::t( 'همه' ) ); ?></button><button type="button" data-g="p"><?php echo esc_html( self::t( 'محصولات' ) ); ?></button><button type="button" data-g="u"><?php echo esc_html( self::t( 'عمومی' ) ); ?></button><button type="button" data-g="b"><?php echo esc_html( self::t( 'برندها' ) ); ?></button></div>
+	<div class="kashi-isz"><span><?php echo esc_html( self::t( 'اندازه' ) ); ?></span><div class="seg" id="kashi-isize"><button type="button" data-s="16">16</button><button type="button" data-s="20">20</button><button type="button" data-s="24" class="on">24</button><button type="button" data-s="32">32</button><button type="button" data-s="48">48</button></div></div>
 	<div class="kashi-igrid" id="kashi-igrid"></div>
 	<div id="kashi-iname"></div>
-	<div class="hint" id="kashi-ihint">کلیک = درج در محل نشانگر کد. آیکون‌ها رنگ متن اطراف را می‌گیرند (currentColor) و با کد ذخیره می‌شوند؛ به هیچ فایل خارجی وابسته نیستند.</div>
+	<div class="hint" id="kashi-ihint"><?php echo esc_html( self::t( 'کلیک = درج در محل نشانگر کد. آیکون‌ها رنگ متن اطراف را می‌گیرند (currentColor) و با کد ذخیره می‌شوند؛ به هیچ فایل خارجی وابسته نیستند.' ) ); ?></div>
 </div>
-<div class="kashi-settings" id="kashi-lpanel" style="left:12px;right:auto;width:420px;transform-origin:top left">
-	<h3><?php self::icon( 'layers' ); ?>کتابخانه بخش‌ها</h3>
-	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-lsearch" placeholder="جستجو…"></div>
-	<div class="hint"><b>کپی:</b> نسخه مستقل که جدا ویرایش می‌شود. <b>لینک‌شده:</b> تغییر اصل آن، در همه صفحه‌ها اعمال می‌شود.</div>
+<div class="kashi-settings" id="kashi-lpanel" style="inset-inline-start:auto;inset-inline-end:12px;width:420px;transform-origin:top left">
+	<h3><?php self::icon( 'layers' ); ?><?php echo esc_html( self::t( 'کتابخانه بخش‌ها' ) ); ?></h3>
+	<div class="kashi-search"><?php self::icon( 'search' ); ?><input type="text" id="kashi-lsearch" placeholder="<?php echo esc_attr( self::t( 'جستجو…' ) ); ?>"></div>
+	<div class="hint"><b><?php echo esc_html( self::t( 'کپی:' ) ); ?></b> <?php echo esc_html( self::t( 'نسخه مستقل که جدا ویرایش می‌شود.' ) ); ?> <b><?php echo esc_html( self::t( 'لینک‌شده:' ) ); ?></b> <?php echo esc_html( self::t( 'تغییر اصل آن، در همه صفحه‌ها اعمال می‌شود.' ) ); ?></div>
 	<div class="kashi-plist" id="kashi-llist"></div>
 </div>
 <div id="kashi-toasts" role="status" aria-live="polite"></div>
@@ -1801,21 +2107,21 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	<div class="kashi-left">
 		<div class="kashi-blocks">
 			<div class="kashi-blocks-head">
-				<span class="t">بخش‌های صفحه <small id="kashi-count">0</small></span>
+				<span class="t"><?php echo esc_html( self::t( 'بخش‌های صفحه' ) ); ?> <small id="kashi-count">0</small></span>
 				<span class="hb">
-					<button type="button" class="btn-s" id="kashi-icobtn" title="کتابخانه آیکون"><?php self::icon( 'shapes' ); ?>آیکون</button>
-					<button type="button" class="btn-s" id="kashi-libbtn"><?php self::icon( 'layers' ); ?>کتابخانه</button>
-					<button type="button" class="btn-s acc" id="kashi-add"><?php self::icon( 'plus' ); ?>افزودن بخش</button>
+					<button type="button" class="btn-s" id="kashi-icobtn" title="<?php echo esc_attr( self::t( 'کتابخانه آیکون' ) ); ?>"><?php self::icon( 'shapes' ); ?><?php echo esc_html( self::t( 'آیکون' ) ); ?></button>
+					<button type="button" class="btn-s" id="kashi-libbtn"><?php self::icon( 'layers' ); ?><?php echo esc_html( self::t( 'کتابخانه' ) ); ?></button>
+					<button type="button" class="btn-s acc" id="kashi-add"><?php self::icon( 'plus' ); ?><?php echo esc_html( self::t( 'افزودن بخش' ) ); ?></button>
 				</span>
 			</div>
 			<div id="kashi-list"></div>
 		</div>
 		<div id="kashi-cur"></div>
-		<div id="kashi-warn" style="display:none"><?php self::icon( 'alert' ); ?><span>کد PHP اینجا اجرا نمی‌شود و حذف می‌شود. شورت‌کدها کار می‌کنند؛ برای PHP خودتان از Code Snippets یا پوشه <code>wp-content/kashi-php</code> استفاده کنید.</span></div>
+		<div id="kashi-warn" style="display:none"><?php self::icon( 'alert' ); ?><span><?php echo esc_html( self::t( 'کد PHP اینجا اجرا نمی‌شود و حذف می‌شود. شورت‌کدها کار می‌کنند؛ برای PHP خودتان از Code Snippets یا پوشه' ) ); ?> <code>wp-content/kashi-php</code> <?php echo esc_html( self::t( 'استفاده کنید.' ) ); ?></span></div>
 		<div class="kashi-code"><textarea id="kashi-code" spellcheck="false"></textarea></div>
 	</div>
-	<div class="kashi-div" id="kashi-div" role="separator" aria-orientation="vertical" aria-label="تغییر اندازه پنل‌ها (کلیدهای چپ و راست)" tabindex="0"></div>
-	<div class="kashi-view"><iframe id="kashi-frame" name="kashi-frame" title="پیش‌نمایش"></iframe><span id="kashi-zoom"></span></div>
+	<div class="kashi-div" id="kashi-div" role="separator" aria-orientation="vertical" aria-label="<?php echo esc_attr( self::t( 'تغییر اندازه پنل‌ها (کلیدهای چپ و راست)' ) ); ?>" tabindex="0"></div>
+	<div class="kashi-view"><iframe id="kashi-frame" name="kashi-frame" title="<?php echo esc_attr( self::t( 'پیش‌نمایش' ) ); ?>"></iframe><span id="kashi-zoom"></span></div>
 </div>
 <form id="kashi-live" method="post" target="kashi-frame" action="<?php echo esc_url( self::live_url( $post ) ); ?>" style="display:none">
 	<input type="hidden" name="kashi_live_nonce" value="<?php echo esc_attr( wp_create_nonce( 'kashi_live_' . $id ) ); ?>">
@@ -1834,6 +2140,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 (function () {
 	var cfg = <?php echo wp_json_encode( $config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?>;
 	var $ = function (id) { return document.getElementById(id); };
+	var I18N = cfg.i18n || {};
+	function T(s) { // ترجمه؛ فاصله‌های دو طرف حفظ می‌شود
+		s = String(s); var k = s.trim(), v = I18N[k];
+		if (!k || !v) { return s; }
+		return s.slice(0, s.length - s.replace(/^\s+/, '').length) + v + s.slice(s.replace(/\s+$/, '').length);
+	}
 	/* فقط یک پنل شناور در هر لحظه باز باشد */
 	function closeOthers(keep) {
 		document.querySelectorAll('.kashi-settings.open').forEach(function (p) { if (p !== keep) { p.classList.remove('open'); } });
@@ -1863,11 +2175,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	var blocks = [], activeUid = null;
 	var dirty = false, timer = null, scrollY = 0, saving = false, suppress = false;
 
-	function setStatus(t) {
+	function setStatus(t, st) { // st: ok | dirty | busy | err
 		var el = $('kashi-status');
-		var st = /خطا/.test(t) ? 'err' : (/●|نشده|ذخیره کنید/.test(t) ? 'dirty' : (/…/.test(t) ? 'busy' : 'ok'));
 		el.textContent = t.replace(/\s*[●✓]\s*/g, ' ').replace(/—\s*$/, '').trim();
-		el.className = 'st ' + st;
+		el.className = 'st ' + (st || 'ok');
 	}
 	function newUid() { return Math.random().toString(36).slice(2, 8); }
 
@@ -1887,7 +2198,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	/* ---------- بخش‌ها ---------- */
 	function makeBlock(b) {
 		b = b || {};
-		var o = { uid: b.uid || newUid(), name: b.name || ('بخش ' + (blocks.length + 1)), full: !!b.full, dev: Array.isArray(b.dev) ? b.dev.slice() : [], from: +b.from || 0, until: +b.until || 0, code: b.code || '' };
+		var o = { uid: b.uid || newUid(), name: b.name || (T('بخش ') + (blocks.length + 1)), full: !!b.full, dev: Array.isArray(b.dev) ? b.dev.slice() : [], from: +b.from || 0, until: +b.until || 0, style: (b.style && typeof b.style === 'object' && !Array.isArray(b.style)) ? JSON.parse(JSON.stringify(b.style)) : {}, code: b.code || '' };
 		if (cm && CM) { o.doc = CM.Doc(o.code, mode); }
 		return o;
 	}
@@ -1901,7 +2212,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function codeOf(b) { return b.doc ? b.doc.getValue() : b.code; }
 	function getBlocks() {
 		syncTa();
-		return blocks.map(function (b) { return { uid: b.uid, name: b.name, full: b.full, dev: b.dev || [], from: b.from || 0, until: b.until || 0, code: codeOf(b) }; });
+		return blocks.map(function (b) { return { uid: b.uid, name: b.name, full: b.full, dev: b.dev || [], from: b.from || 0, until: b.until || 0, style: b.style || {}, code: codeOf(b) }; });
 	}
 
 	function select(i, scrollPreview) {
@@ -1926,15 +2237,15 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function kindInfo(code) {
 		var k = codeKind(code), parts = [];
 		function chip(x) { return '<bdi class="kc">' + x + '</bdi>'; }
-		if (k === 'css') { return { mode: 'css', label: 'تشخیص خودکار: ' + chip('CSS') + ' ← در head' }; }
-		if (k === 'js') { return { mode: 'javascript', label: 'تشخیص خودکار: ' + chip('JS') + ' ← انتهای صفحه' }; }
+		if (k === 'css') { return { mode: 'css', label: T('تشخیص خودکار: ') + chip('CSS') + T(' ← در head') }; }
+		if (k === 'js') { return { mode: 'javascript', label: T('تشخیص خودکار: ') + chip('JS') + T(' ← انتهای صفحه') }; }
 		var c = String(code || '');
 		if (/<(?!style|script|link)[a-z]/i.test(c.replace(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi, ''))) { parts.push('HTML'); }
 		if (/<style\b/i.test(c)) { parts.push('CSS'); }
 		if (/<script\b(?![^>]*ld\+json)/i.test(c)) { parts.push('JS'); }
-		if (/application\/ld\+json/i.test(c)) { parts.push('اسکیما'); }
-		if (/\[[a-z_-]+[\s\]]/i.test(c)) { parts.push('شورت‌کد'); }
-		return { mode: 'htmlmixed', label: parts.length ? 'تشخیص خودکار: ' + parts.map(chip).join(' ') : '' };
+		if (/application\/ld\+json/i.test(c)) { parts.push(T('اسکیما')); }
+		if (/\[[a-z_-]+[\s\]]/i.test(c)) { parts.push(T('شورت‌کد')); }
+		return { mode: 'htmlmixed', label: parts.length ? T('تشخیص خودکار: ') + parts.map(chip).join(' ') : '' };
 	}
 	function showKind() {
 		var k = idx(), el = $('kashi-kind');
@@ -1948,7 +2259,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function markActive() {
 		var k = idx();
 		Array.prototype.forEach.call(list.children, function (el, i) { el.classList.toggle('on', i === k); });
-		$('kashi-cur').innerHTML = k >= 0 ? (ic('code') + '<span>در حال ویرایش</span><b>' + esc(blocks[k].name || 'بدون نام') + '</b><span id="kashi-kind" class="kind"></span>') : '';
+		$('kashi-cur').innerHTML = k >= 0 ? (ic('code') + ('<span>' + T('در حال ویرایش') + '</span><b>') + esc(blocks[k].name || T('بدون نام')) + '</b><span id="kashi-kind" class="kind"></span>') : '';
 		showKind();
 		$('kashi-count').textContent = blocks.length;
 		phpWarn();
@@ -1972,16 +2283,16 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 	/* ---------- نمایش در دستگاه‌ها ---------- */
 	var DEVS = [
-		{ k: 'd', ic: 'monitor', fa: 'دسکتاپ', r: '۱۴۴۰ پیکسل و بیشتر' },
-		{ k: 'l', ic: 'laptop', fa: 'لپ‌تاپ', r: '۱۰۲۵ تا ۱۴۳۹' },
-		{ k: 't', ic: 'tablet', fa: 'تبلت', r: '۷۶۸ تا ۱۰۲۴' },
-		{ k: 'm', ic: 'phone', fa: 'موبایل', r: 'کمتر از ۷۶۸' }
+		{ k: 'd', ic: 'monitor', fa: T('دسکتاپ'), r: T('۱۴۴۰ پیکسل و بیشتر') },
+		{ k: 'l', ic: 'laptop', fa: T('لپ‌تاپ'), r: T('۱۰۲۵ تا ۱۴۳۹') },
+		{ k: 't', ic: 'tablet', fa: T('تبلت'), r: T('۷۶۸ تا ۱۰۲۴') },
+		{ k: 'm', ic: 'phone', fa: T('موبایل'), r: T('کمتر از ۷۶۸') }
 	];
 	function devChip(btn, b) {
 		var d = b.dev || [];
 		btn.classList.toggle('on', d.length > 0);
 		btn.innerHTML = d.length ? DEVS.filter(function (x) { return d.indexOf(x.k) > -1; }).map(function (x) { return ic(x.ic); }).join('') : ic('monitor') + ic('phone');
-		btn.title = d.length ? 'فقط در: ' + DEVS.filter(function (x) { return d.indexOf(x.k) > -1; }).map(function (x) { return x.fa; }).join('، ') : 'نمایش در همه دستگاه‌ها (ریسپانسیو)';
+		btn.title = d.length ? T('فقط در: ') + DEVS.filter(function (x) { return d.indexOf(x.k) > -1; }).map(function (x) { return x.fa; }).join(T('، ')) : T('نمایش در همه دستگاه‌ها (ریسپانسیو)');
 		btn.setAttribute('aria-label', btn.title);
 	}
 	var dvPop = null;
@@ -1990,9 +2301,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		dvPop = document.createElement('div');
 		dvPop.className = 'kashi-dvpop';
 		dvPop.owner = btn;
-		dvPop.innerHTML = '<b>نمایش این بخش در</b>' + DEVS.map(function (x) {
+		dvPop.innerHTML = ('<b>' + T('نمایش این بخش در') + '</b>') + DEVS.map(function (x) {
 			return '<label class="sw dvr"><span class="dvl">' + ic(x.ic) + '<span><b>' + x.fa + '</b><small>' + x.r + '</small></span></span><input type="checkbox" data-k="' + x.k + '"' + ((b.dev || []).indexOf(x.k) > -1 ? ' checked' : '') + '><i></i></label>';
-		}).join('') + '<div class="hint">همه خاموش = نمایش در همه دستگاه‌ها (ریسپانسیو).<br>مثلاً یک هیرو «فقط دسکتاپ و لپ‌تاپ» و یک هیروی دیگر «فقط موبایل و تبلت».</div>';
+		}).join('') + ('<div class="hint">' + T('همه خاموش = نمایش در همه دستگاه‌ها (ریسپانسیو).') + '<br>' + T('مثلاً یک هیرو «فقط دسکتاپ و لپ‌تاپ» و یک هیروی دیگر «فقط موبایل و تبلت».') + '</div>');
 		document.body.appendChild(dvPop);
 		var r = btn.getBoundingClientRect();
 		dvPop.style.top = Math.min(r.bottom + 6, window.innerHeight - dvPop.offsetHeight - 8) + 'px';
@@ -2019,19 +2330,41 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function j2g(jy,jm,jd){var r=jalCal(jy);return d2g(g2d(r.gy,3,r.march)+(jm-1)*31-jdiv(jm,7)*(jm-7)+jd-1)}
 	function g2j(gy,gm,gd){var jdn=g2d(gy,gm,gd),jy=gy-621,r=jalCal(jy),k=jdn-g2d(gy,3,r.march),jm,jd;if(k>=0){if(k<=185){return[jy,1+jdiv(k,31),jmod(k,31)+1]}k-=186}else{jy-=1;k+=179;if(r.leap===1)k+=1}return[jy,7+jdiv(k,30),jmod(k,30)+1]}
 	function jLen(jy,jm){return jm<=6?31:jm<=11?30:(jalCal(jy).leap===0?30:29)}
-	var TEHRAN = 3.5 * 3600 * 1000; // ایران از ۱۴۰۱ ساعت تابستانی ندارد: همیشه UTC+03:30
-	var J_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-	function faNum(x) { return String(x).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }); }
+	/* منطقه زمانی سایت (مثلاً Asia/Tehran یا +03:30) و تقویم شمسی/میلادی، طبق تنظیم زبان */
+	var TZ = cfg.tz || 'UTC', FIXED = /^[+-]\d{2}:\d{2}$/.test(TZ) ? (TZ[0] === '-' ? -1 : 1) * (+TZ.slice(1, 3) * 60 + +TZ.slice(4, 6)) * 60000 : null;
+	var TZF = null;
+	try { if (FIXED === null) { TZF = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }); } } catch (e) { FIXED = 0; }
+	function offAt(ms) { // اختلاف ساعت منطقه زمانی سایت با UTC در یک لحظه (با در نظر گرفتن ساعت تابستانی)
+		if (FIXED !== null) { return FIXED; }
+		var p = {}; TZF.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+		return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+	}
+	function wallToTs(y, mo, d, h, i) { var w = Date.UTC(y, mo - 1, d, h, i), g = w - offAt(w); return Math.round((w - offAt(g)) / 1000); }
+	function tsToWall(ts) { var d = new Date(ts * 1000 + offAt(ts * 1000)); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), i: d.getUTCMinutes() }; }
+	var JAL = cfg.cal === 'jalali';
+	var J_MONTHS = [T('فروردین'), T('اردیبهشت'), T('خرداد'), T('تیر'), T('مرداد'), T('شهریور'), T('مهر'), T('آبان'), T('آذر'), T('دی'), T('بهمن'), T('اسفند')];
+	var G_MONTHS = (function () { var f; try { f = new Intl.DateTimeFormat(cfg.locale, { month: 'long', timeZone: 'UTC' }); } catch (e) { f = null; }
+		var ck = ['کانوونی دووەم', 'شوبات', 'ئازار', 'نیسان', 'ئایار', 'حوزەیران', 'تەممووز', 'ئاب', 'ئەیلوول', 'تشرینی یەکەم', 'تشرینی دووەم', 'کانوونی یەکەم'];
+		return Array.apply(null, Array(12)).map(function (_, k) { return cfg.lang === 'ckb' ? ck[k] : (f ? f.format(new Date(Date.UTC(2024, k, 15))) : String(k + 1)); }); })();
+	var CKB = cfg.lang === 'ckb'; // مرورگرها داده تقویم کوردی ندارند؛ ماه و رقم را خودمان می‌سازیم
+	var NUMF = (function () { try { return new Intl.NumberFormat(CKB ? 'ar-IQ-u-nu-arab' : cfg.locale, { useGrouping: false }); } catch (e) { return null; } })();
+	function faNum(x) { return String(x).replace(/\d+/g, function (d) { return NUMF ? NUMF.format(+d).padStart(d.length, NUMF.format(0)) : d; }); }
 	function pad2(n) { return (n < 10 ? '0' : '') + n; }
-	function tsToJ(ts) { // ثانیه UTC ← تاریخ/ساعت تهران
-		var d = new Date(ts * 1000 + TEHRAN), j = g2j(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
-		return { y: j[0], m: j[1], d: j[2], h: d.getUTCHours(), i: d.getUTCMinutes() };
+	function tsToJ(ts) { // ثانیه UTC ← تاریخ/ساعت محلی سایت در تقویم فعال
+		var w = tsToWall(ts), j = JAL ? g2j(w.y, w.m, w.d) : [w.y, w.m, w.d];
+		return { y: j[0], m: j[1], d: j[2], h: w.h, i: w.i };
 	}
 	function jToTs(o) {
-		var g = j2g(o.y, o.m, o.d);
-		return Math.round((Date.UTC(g[0], g[1] - 1, g[2], o.h, o.i) - TEHRAN) / 1000);
+		var g = JAL ? j2g(o.y, o.m, o.d) : [o.y, o.m, o.d];
+		return wallToTs(g[0], g[1], g[2], o.h, o.i);
 	}
-	function jText(ts) { var o = tsToJ(ts); return faNum(o.d) + ' ' + J_MONTHS[o.m - 1] + ' ' + faNum(o.y) + '، ساعت ' + faNum(pad2(o.h) + ':' + pad2(o.i)); }
+	function mLen(y, m) { return JAL ? jLen(y, m) : new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+	function jText(ts) {
+		if (!JAL && !CKB) {
+			try { return new Intl.DateTimeFormat(cfg.locale, { dateStyle: 'long', timeStyle: 'short', timeZone: FIXED === null ? TZ : 'UTC' }).format(new Date(ts * 1000 + (FIXED === null ? 0 : FIXED))); } catch (e) { }
+		}
+		var o = tsToJ(ts); return faNum(o.d) + ' ' + (JAL ? J_MONTHS : G_MONTHS)[o.m - 1] + ' ' + faNum(o.y) + T('، ساعت ') + faNum(pad2(o.h) + ':' + pad2(o.i));
+	}
 	function schState(b) {
 		var now = Date.now() / 1000;
 		if (b.until && now >= b.until) { return 'ended'; }
@@ -2041,17 +2374,17 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function schChip(btn, b) {
 		var st = schState(b);
 		btn.className = 'sch' + (st ? ' ' + st : '');
-		btn.innerHTML = ic('clock') + (st === 'wait' ? '<span>' + faNum((function (o) { return o.d + '/' + o.m; })(tsToJ(b.from))) + '</span>' : '');
-		btn.title = st === 'wait' ? 'منتشر می‌شود: ' + jText(b.from) + (b.until ? ' — تا ' + jText(b.until) : '')
-			: st === 'ended' ? 'زمان نمایش تمام شده (' + jText(b.until) + ')؛ در سایت دیده نمی‌شود'
-			: st === 'live' ? 'در حال نمایش' + (b.until ? ' تا ' + jText(b.until) : '')
-			: 'زمان‌بندی انتشار (همیشه نمایش داده می‌شود)';
+		btn.innerHTML = ic('clock') + (st === 'wait' ? '<span>' + (JAL || CKB ? faNum((function (o) { return o.d + '/' + o.m; })(tsToJ(b.from))) : (function () { try { return new Intl.DateTimeFormat(cfg.locale, { month: 'short', day: 'numeric', timeZone: cfg.tz || 'UTC' }).format(new Date(b.from * 1000)); } catch (e) { return ''; } })()) + '</span>' : '');
+		btn.title = st === 'wait' ? T('منتشر می‌شود: ') + jText(b.from) + (b.until ? T(' — تا ') + jText(b.until) : '')
+			: st === 'ended' ? T('زمان نمایش تمام شده (') + jText(b.until) + T(')؛ در سایت دیده نمی‌شود')
+			: st === 'live' ? T('در حال نمایش') + (b.until ? T(' تا ') + jText(b.until) : '')
+			: T('زمان‌بندی انتشار (همیشه نمایش داده می‌شود)');
 		btn.setAttribute('aria-label', btn.title);
 	}
 	function jPicker(name, ts) {
 		var o = tsToJ(ts), y0 = tsToJ(Date.now() / 1000).y, h = '<div class="jp" data-p="' + name + '">';
 		h += '<select data-f="d">' + Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === o.d ? ' selected' : '') + '>' + faNum(i + 1) + '</option>'; }).join('') + '</select>';
-		h += '<select data-f="m">' + J_MONTHS.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === o.m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>';
+		h += '<select data-f="m">' + (JAL ? J_MONTHS : G_MONTHS).map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === o.m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>';
 		h += '<select data-f="y">' + [y0 - 1, y0, y0 + 1, y0 + 2].map(function (y) { return '<option value="' + y + '"' + (y === o.y ? ' selected' : '') + '>' + faNum(y) + '</option>'; }).join('') + '</select>';
 		h += '<input type="time" data-f="t" value="' + pad2(o.h) + ':' + pad2(o.i) + '"></div>';
 		return h;
@@ -2059,7 +2392,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function jRead(box) {
 		var g = function (f) { return box.querySelector('[data-f=' + f + ']'); }, t = (g('t').value || '00:00').split(':');
 		var o = { y: +g('y').value, m: +g('m').value, d: +g('d').value, h: +t[0] || 0, i: +t[1] || 0 };
-		o.d = Math.min(o.d, jLen(o.y, o.m));
+		o.d = Math.min(o.d, mLen(o.y, o.m));
 		return jToTs(o);
 	}
 	function schPop(btn, b) {
@@ -2068,12 +2401,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		dvPop = document.createElement('div');
 		dvPop.className = 'kashi-dvpop kashi-schpop';
 		dvPop.owner = btn;
-		dvPop.innerHTML = '<b>زمان‌بندی انتشار این بخش</b>' +
-			'<label class="sw dvr"><span class="dvl">' + ic('clock') + '<span><b>انتشار در زمان مشخص</b><small>تا آن زمان در سایت دیده نمی‌شود</small></span></span><input type="checkbox" data-s="from"' + (b.from ? ' checked' : '') + '><i></i></label>' +
+		dvPop.innerHTML = ('<b>' + T('زمان‌بندی انتشار این بخش') + '</b>') +
+			'<label class="sw dvr"><span class="dvl">' + ic('clock') + ('<span><b>' + T('انتشار در زمان مشخص') + '</b><small>' + T('تا آن زمان در سایت دیده نمی‌شود') + '</small></span></span><input type="checkbox" data-s="from"') + (b.from ? ' checked' : '') + '><i></i></label>' +
 			jPicker('from', b.from || def) +
-			'<label class="sw dvr"><span class="dvl">' + ic('x-circle') + '<span><b>پایان نمایش</b><small>اختیاری؛ مثلاً پایان جشنواره</small></span></span><input type="checkbox" data-s="until"' + (b.until ? ' checked' : '') + '><i></i></label>' +
+			'<label class="sw dvr"><span class="dvl">' + ic('x-circle') + ('<span><b>' + T('پایان نمایش') + '</b><small>' + T('اختیاری؛ مثلاً پایان جشنواره') + '</small></span></span><input type="checkbox" data-s="until"') + (b.until ? ' checked' : '') + '><i></i></label>' +
 			jPicker('until', b.until || (b.from || def) + 7 * 86400) +
-			'<div class="hint">تاریخ شمسی و به وقت تهران. بعد از «ذخیره»، بخش سر وقت خودش منتشر می‌شود؛ لازم نیست دوباره کاری کنید. در ویرایشگر همیشه دیده می‌شود.</div><div class="schmsg"></div>';
+			('<div class="hint">' + T('منطقه زمانی:') + ' ' + TZ + '. ' + T('بعد از «ذخیره»، بخش سر وقت خودش منتشر می‌شود؛ لازم نیست دوباره کاری کنید. در ویرایشگر همیشه دیده می‌شود.') + '</div><div class="schmsg"></div>');
 		document.body.appendChild(dvPop);
 		var r = btn.getBoundingClientRect();
 		dvPop.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - dvPop.offsetHeight - 8)) + 'px';
@@ -2086,8 +2419,8 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				b[k] = on ? jRead(box) : 0;
 			});
 			var msg = dvPop.querySelector('.schmsg');
-			if (b.from && b.until && b.until <= b.from) { msg.textContent = 'پایان نمایش باید بعد از زمان انتشار باشد.'; msg.className = 'schmsg err'; }
-			else if (b.from) { msg.textContent = (b.from <= Date.now() / 1000 ? 'این زمان گذشته؛ بخش همین الان دیده می‌شود.' : 'منتشر می‌شود: ' + jText(b.from)); msg.className = 'schmsg'; }
+			if (b.from && b.until && b.until <= b.from) { msg.textContent = T('پایان نمایش باید بعد از زمان انتشار باشد.'); msg.className = 'schmsg err'; }
+			else if (b.from) { msg.textContent = (b.from <= Date.now() / 1000 ? T('این زمان گذشته؛ بخش همین الان دیده می‌شود.') : T('منتشر می‌شود: ') + jText(b.from)); msg.className = 'schmsg'; }
 			else { msg.textContent = ''; }
 			schChip(btn, b);
 			markDirty();
@@ -2096,17 +2429,117 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		['from', 'until'].forEach(function (k) { dvPop.querySelector('.jp[data-p=' + k + ']').classList.toggle('off', !b[k]); });
 	}
 
+	/* ---------- تنظیمات بخش: حاشیه خارجی، فاصله داخلی، پس‌زمینه، … (به سبک المنتور) ---------- */
+	var ST_DEVS = [{ k: 'd', ic: 'monitor', w: 1440, fa: T('دسکتاپ') }, { k: 'l', ic: 'laptop', w: 1280, fa: T('لپ‌تاپ') }, { k: 't', ic: 'tablet', w: 768, fa: T('تبلت') }, { k: 'm', ic: 'phone', w: 390, fa: T('موبایل') }];
+	var ST_UNITS = ['px', '%', 'em', 'rem', 'vh', 'vw'], ST_SIDES = [['t', T('بالا')], ['r', T('راست')], ['b', T('پایین')], ['l', T('چپ')]];
+	var stDev = 'd', stLink = { m: true, p: true };
+	function stDevFromPreview() { return devW >= 1440 ? 'd' : devW >= 1025 ? 'l' : devW >= 768 ? 't' : 'm'; }
+	function stInherited(st, prop, dv, side) { // مقدار به ارث رسیده از دستگاه بزرگ‌تر (برای placeholder)
+		var order = ['d', 'l', 't', 'm'], v = '';
+		for (var i = 0; i < order.length && order[i] !== dv; i++) {
+			var box = st[prop] && st[prop][order[i]];
+			if (box && box[side] !== undefined && box[side] !== '') { v = box[side] + (box[side] === '0' ? '' : box.u || 'px'); }
+		}
+		return v;
+	}
+	function stBox(prop, label, st) {
+		var box = (st[prop] && st[prop][stDev]) || {}, u = box.u || 'px';
+		var h = '<div class="stbox" data-prop="' + prop + '"><div class="sthd"><b>' + label + '</b>' + ic(ST_DEVS.filter(function (x) { return x.k === stDev; })[0].ic) +
+			'<select data-u>' + ST_UNITS.map(function (x) { return '<option' + (x === u ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div><div class="stin">';
+		ST_SIDES.forEach(function (sd) {
+			var v = box[sd[0]] !== undefined ? box[sd[0]] : '';
+			h += '<label><input type="number" step="any" data-side="' + sd[0] + '" value="' + esc(v) + '" placeholder="' + esc(stInherited(st, prop, stDev, sd[0]) || '—') + '"><span>' + sd[1] + '</span></label>';
+		});
+		return h + '<button type="button" class="stlink' + (stLink[prop] ? ' on' : '') + '" title="' + T('یکسان کردن هر چهار طرف') + '">' + ic('link') + '</button></div></div>';
+	}
+	function stOne(key, label, st, units) {
+		var o = st[key] || {}, u = o.u || 'px';
+		return '<div class="strow"><span>' + label + '</span><div><input type="number" step="any" min="0" data-one="' + key + '" value="' + esc(o.v !== undefined ? o.v : '') + '">' +
+			'<select data-oneu="' + key + '">' + units.map(function (x) { return '<option' + (x === u ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div></div>';
+	}
+	function stClean(o) { Object.keys(o).forEach(function (k) { if (o[k] && typeof o[k] === 'object') { stClean(o[k]); if (!Object.keys(o[k]).length || (Object.keys(o[k]).length === 1 && o[k].u)) { delete o[k]; } } else if (o[k] === '' || o[k] === undefined) { delete o[k]; } }); return o; }
+	function stHas(st) { return Object.keys(stClean(JSON.parse(JSON.stringify(st || {})))).length > 0; }
+	function stylePop(btn, b) {
+		if (dvPop) { var was = dvPop.owner === btn; dvPop.remove(); dvPop = null; if (was) { return; } }
+		b.style = b.style || {};
+		stDev = stDevFromPreview();
+		dvPop = document.createElement('div');
+		dvPop.className = 'kashi-dvpop kashi-stpop';
+		dvPop.owner = btn;
+		document.body.appendChild(dvPop);
+		function draw() {
+			var st = b.style;
+			dvPop.innerHTML = '<div class="sttop"><b>' + T('تنظیمات بخش') + ' «' + esc(b.name || '') + '»</b><button type="button" class="stx" title="' + T('بستن') + '">✕</button></div>' +
+				'<div class="stdevs">' + ST_DEVS.map(function (x) { return '<button type="button" data-dev="' + x.k + '"' + (x.k === stDev ? ' class="on"' : '') + ' title="' + x.fa + '">' + ic(x.ic) + '<span>' + x.fa + '</span></button>'; }).join('') + '</div>' +
+				'<div class="stsec">' + T('فاصله‌ها') + '</div>' + stBox('m', T('حاشیه خارجی'), st) + stBox('p', T('فاصله داخلی'), st) +
+				'<div class="stsec">' + T('ظاهر') + '</div>' +
+				'<div class="strow"><span>' + T('رنگ پس‌زمینه') + '</span><div><label class="stcolor"><input type="color" data-bg value="' + esc(st.bg || '#ffffff') + '"><i style="background:' + esc(st.bg || 'transparent') + '"></i></label>' + (st.bg ? '<button type="button" class="stclr" data-clr="bg">' + T('حذف') + '</button>' : '') + '</div></div>' +
+				stOne('r', T('گردی گوشه‌ها'), st, ['px', '%', 'em', 'rem']) + stOne('mh', T('حداقل ارتفاع'), st, ['px', 'vh', 'em', 'rem']) +
+				'<div class="stsec">' + T('پیشرفته') + '</div>' +
+				'<div class="strow"><span>' + T('شناسه (ID)') + '</span><div><input type="text" class="stt" data-txt="id" value="' + esc(st.id || '') + '" placeholder="contact"></div></div>' +
+				'<div class="strow"><span>' + T('کلاس CSS') + '</span><div><input type="text" class="stt" data-txt="cls" value="' + esc(st.cls || '') + '" placeholder="my-section"></div></div>' +
+				'<div class="hint">' + T('با شناسه، می‌توانید به این بخش لینک بدهید؛ مثلاً') + ' <code>#' + esc(st.id || 'contact') + '</code>. ' + T('مقدار خالی یعنی از دستگاه بزرگ‌تر به ارث می‌رسد.') + '</div>' +
+				'<div class="stfoot"><button type="button" class="streset">' + T('بازنشانی همه') + '</button></div>';
+			bind();
+		}
+		function apply() { stClean(b.style); stIcon(btn, b); changed(); }
+		function bind() {
+			dvPop.querySelector('.stx').addEventListener('click', function () { dvPop.remove(); dvPop = null; });
+			dvPop.querySelectorAll('[data-dev]').forEach(function (x) {
+				x.addEventListener('click', function () {
+					stDev = x.getAttribute('data-dev');
+					setDevice(ST_DEVS.filter(function (d) { return d.k === stDev; })[0].w);
+					draw();
+				});
+			});
+			dvPop.querySelectorAll('.stbox').forEach(function (bx) {
+				var prop = bx.getAttribute('data-prop');
+				function box() { b.style[prop] = b.style[prop] || {}; b.style[prop][stDev] = b.style[prop][stDev] || {}; return b.style[prop][stDev]; }
+				bx.querySelectorAll('input[data-side]').forEach(function (inp) {
+					inp.addEventListener('input', function () {
+						var v = inp.value;
+						if (stLink[prop]) { bx.querySelectorAll('input[data-side]').forEach(function (o) { o.value = v; box()[o.getAttribute('data-side')] = v; }); }
+						else { box()[inp.getAttribute('data-side')] = v; }
+						box().u = bx.querySelector('[data-u]').value;
+						apply();
+					});
+				});
+				bx.querySelector('[data-u]').addEventListener('change', function () { box().u = this.value; apply(); });
+				bx.querySelector('.stlink').addEventListener('click', function () { stLink[prop] = !stLink[prop]; this.classList.toggle('on', stLink[prop]); });
+			});
+			var bg = dvPop.querySelector('[data-bg]');
+			bg.addEventListener('input', function () { b.style.bg = bg.value; bg.nextElementSibling.style.background = bg.value; apply(); });
+			bg.addEventListener('change', draw);
+			dvPop.querySelectorAll('[data-clr]').forEach(function (x) { x.addEventListener('click', function () { delete b.style[x.getAttribute('data-clr')]; apply(); draw(); }); });
+			dvPop.querySelectorAll('[data-one]').forEach(function (inp) {
+				var k = inp.getAttribute('data-one'), us = dvPop.querySelector('[data-oneu="' + k + '"]');
+				function upd() { if (inp.value === '') { delete b.style[k]; } else { b.style[k] = { v: inp.value, u: us.value }; } apply(); }
+				inp.addEventListener('input', upd); us.addEventListener('change', upd);
+			});
+			dvPop.querySelectorAll('[data-txt]').forEach(function (inp) {
+				inp.addEventListener('input', function () { b.style[inp.getAttribute('data-txt')] = inp.value.trim(); apply(); });
+			});
+			dvPop.querySelector('.streset').addEventListener('click', function () { b.style = {}; apply(); draw(); });
+		}
+		draw();
+		var r = btn.getBoundingClientRect();
+		dvPop.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - dvPop.offsetHeight - 8)) + 'px';
+		dvPop.style.left = Math.max(8, Math.min(r.left - 150, window.innerWidth - dvPop.offsetWidth - 8)) + 'px';
+		dvPop.addEventListener('click', function (e) { e.stopPropagation(); });
+	}
+	function stIcon(btn, b) { var it = btn.closest('.kashi-item'); if (it) { it.classList.toggle('styled', stHas(b.style)); } }
+
 	function renderList() {
 		list.innerHTML = '';
 		blocks.forEach(function (b, i) {
 			var el = document.createElement('div');
 			el.className = 'kashi-item';
-			el.innerHTML = '<span class="n"></span><a class="lnk" target="_blank" style="display:none" title="لینک‌شده به کتابخانه — برای ویرایش اصل آن کلیک کنید">' + ic('link') + '</a><input class="nm" type="text" placeholder="نام بخش">' +
-				'<label class="fw" title="کل عرض صفحه"><input type="checkbox"><span>' + ic('width') + 'تمام‌عرض</span></label>' +
-				'<button type="button" class="dv" title="نمایش در دستگاه‌ها"></button>' +
-				'<button type="button" class="sch" title="زمان‌بندی انتشار"></button>' +
-				'<span class="acts"><button type="button" data-a="up" title="بالا">' + ic('up') + '</button><button type="button" data-a="down" title="پایین">' + ic('down') + '</button>' +
-				'<button type="button" data-a="dup" title="کپی">' + ic('copy') + '</button><button type="button" data-a="lib" title="ذخیره در کتابخانه">' + ic('bookmark') + '</button><button type="button" data-a="del" title="حذف">' + ic('trash') + '</button></span>';
+			el.innerHTML = ('<span class="n"></span><a class="lnk" target="_blank" style="display:none" title="' + T('لینک‌شده به کتابخانه — برای ویرایش اصل آن کلیک کنید') + '">') + ic('link') + ('</a><input class="nm" type="text" placeholder="' + T('نام بخش') + '">') +
+				('<label class="fw" title="' + T('کل عرض صفحه') + '"><input type="checkbox"><span>') + ic('width') + (T('تمام‌عرض') + '</span></label>') +
+				('<button type="button" class="dv" title="' + T('نمایش در دستگاه‌ها') + '"></button>') +
+				('<button type="button" class="sch" title="' + T('زمان‌بندی انتشار') + '"></button>') +
+				('<span class="acts"><button type="button" data-a="style" title="' + T('تنظیمات بخش (فاصله، پس‌زمینه، …)') + '">') + ic('sliders') + ('</button><button type="button" data-a="up" title="' + T('بالا') + '">') + ic('up') + ('</button><button type="button" data-a="down" title="' + T('پایین') + '">') + ic('down') + '</button>' +
+				('<button type="button" data-a="dup" title="' + T('کپی') + '">') + ic('copy') + ('</button><button type="button" data-a="lib" title="' + T('ذخیره در کتابخانه') + '">') + ic('bookmark') + ('</button><button type="button" data-a="del" title="' + T('حذف') + '">') + ic('trash') + '</button></span>';
 			el.querySelector('.n').textContent = i + 1;
 			var nm = el.querySelector('.nm');
 			nm.value = b.name;
@@ -2115,6 +2548,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			var dvb = el.querySelector('.dv');
 			devChip(dvb, b);
 			dvb.addEventListener('click', function (e) { e.stopPropagation(); devPop(dvb, b); });
+			if (stHas(b.style)) { el.classList.add('styled'); }
 			var scb = el.querySelector('.sch');
 			schChip(scb, b);
 			scb.addEventListener('click', function (e) { e.stopPropagation(); schPop(scb, b); });
@@ -2127,6 +2561,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			});
 			el.querySelector('.acts').addEventListener('click', function (e) {
 				var btn = e.target.closest('button');
+				if (btn && btn.getAttribute('data-a') === 'style') { e.stopPropagation(); stylePop(btn, b); return; }
 				if (btn) { act(btn.getAttribute('data-a'), blocks.indexOf(b)); }
 			});
 			list.appendChild(el);
@@ -2144,10 +2579,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		} else if (a === 'down' && i < blocks.length - 1) {
 			blocks.splice(i, 1); blocks.splice(i + 1, 0, b); renderList();
 		} else if (a === 'dup') {
-			var copy = makeBlock({ name: b.name + ' (کپی)', code: codeOf(b), full: b.full, dev: b.dev, from: b.from, until: b.until });
+			var copy = makeBlock({ name: b.name + T(' (کپی)'), code: codeOf(b), full: b.full, dev: b.dev, from: b.from, until: b.until, style: b.style });
 			blocks.splice(i + 1, 0, copy); renderList(); select(i + 1, false);
 		} else if (a === 'del') {
-			if (!confirm('بخش «' + (b.name || (i + 1)) + '» حذف شود؟')) { return; }
+			if (!confirm(T('بخش «') + (b.name || (i + 1)) + T('» حذف شود؟'))) { return; }
 			var wasActive = (b.uid === activeUid);
 			blocks.splice(i, 1);
 			if (!blocks.length) { blocks.push(makeBlock()); }
@@ -2184,7 +2619,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		}
 		if (form.kashi_live_location) { form.kashi_live_location.value = getLoc(); }
 		form.submit();
-		setStatus('در حال بارگذاری…');
+		setStatus(T('در حال بارگذاری…'), 'busy');
 	}
 
 	function frameDoc() { try { return frame.contentDocument; } catch (e) { return null; } }
@@ -2222,10 +2657,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			});
 			highlight(false);
 		}
-		setStatus(dirty ? 'ذخیره نشده ●' : 'ذخیره شده');
+		setStatus(dirty ? T('ذخیره نشده ●') : T('ذخیره شده'), dirty ? 'dirty' : 'ok');
 	});
 
-	function markDirty() { dirty = true; setStatus('ذخیره نشده ●'); }
+	function markDirty() { dirty = true; setStatus(T('ذخیره نشده ●'), 'dirty'); }
 	function changed() {
 		if (vQuiet) { return; } // تغییر از ویرایش مستقیم: پیش‌نمایش همین الان درست است
 		markDirty();
@@ -2284,7 +2719,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		$('kashi-hfcond').style.display = l ? '' : 'none';
 		$('kashi-hfids-row').style.display = (m === 'include' || m === 'exclude') ? '' : 'none';
 		var b = $('kashi-hfbtn');
-		if (b) { b.querySelector('span').textContent = l === 'header' ? 'هدر سایت' : (l === 'footer' ? 'فوتر سایت' : 'محل نمایش'); }
+		if (b) { b.querySelector('span').textContent = l === 'header' ? T('هدر سایت') : (l === 'footer' ? T('فوتر سایت') : T('محل نمایش')); }
 	}
 	if (hfPanel) {
 		hfPanel.querySelectorAll('input[name=kashi_loc]').forEach(function (r) {
@@ -2301,7 +2736,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function save() {
 		if (saving) { return; }
 		saving = true;
-		setStatus('در حال ذخیره…');
+		setStatus(T('در حال ذخیره…'), 'busy');
 		var fd = new FormData();
 		fd.append('action', 'kashi_save');
 		fd.append('post_id', cfg.postId);
@@ -2324,12 +2759,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			.then(function (d) {
 				saving = false;
 				if (d && d.success) {
-					dirty = false; setStatus('ذخیره شد ✓');
+					dirty = false; setStatus(T('ذخیره شد ✓'), 'ok');
 					if (d.data && d.data.revs) { revs = d.data.revs; renderRevs(); }
 				}
-				else { setStatus('خطا در ذخیره'); toast((d && d.data) || 'ذخیره انجام نشد.'); }
+				else { setStatus(T('خطا در ذخیره'), 'err'); toast((d && d.data) || T('ذخیره انجام نشد.')); }
 			})
-			.catch(function () { saving = false; setStatus('خطا در ذخیره'); toast('ارتباط با سرور برقرار نشد.'); });
+			.catch(function () { saving = false; setStatus(T('خطا در ذخیره'), 'err'); toast(T('ارتباط با سرور برقرار نشد.')); });
 	}
 	$('kashi-save').addEventListener('click', save);
 	document.addEventListener('keydown', function (e) {
@@ -2382,24 +2817,24 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	var revs = cfg.revs || [], hBtn = $('kashi-hist'), hPanel = $('kashi-hpanel'), hList = $('kashi-hlist');
 	function renderRevs() {
 		hList.innerHTML = '';
-		if (!revs.length) { hint(hList, 'هنوز نسخه‌ای ثبت نشده. از اولین ذخیره، نسخه‌ها اینجا می‌آیند.'); return; }
+		if (!revs.length) { hint(hList, T('هنوز نسخه‌ای ثبت نشده. از اولین ذخیره، نسخه‌ها اینجا می‌آیند.')); return; }
 		revs.forEach(function (r) {
 			var cur = (r.i === 0);
-			var el = row(r.when + (cur ? ' · نسخه فعلی' : ''), [r.ago, r.user, r.n + ' بخش'].filter(Boolean).join(' · '), cur);
-			btn(el.querySelector('.btns'), 'بازگردانی', function () { restore(r); }, 'undo');
+			var el = row((r.ts ? jText(r.ts) : r.when) + (cur ? T(' · نسخه فعلی') : ''), [r.ago, r.user, T('بخش‌ها') + ': ' + faNum(r.n)].filter(Boolean).join(' · '), cur);
+			btn(el.querySelector('.btns'), T('بازگردانی'), function () { restore(r); }, 'undo');
 			hList.appendChild(el);
 		});
 	}
 	function restore(r) {
-		if (dirty && !confirm('تغییرات ذخیره‌نشده‌ی فعلی از بین می‌رود. ادامه می‌دهید؟')) { return; }
+		if (dirty && !confirm(T('تغییرات ذخیره‌نشده‌ی فعلی از بین می‌رود. ادامه می‌دهید؟'))) { return; }
 		post({ action: 'kashi_rev_get', post_id: cfg.postId, nonce: cfg.saveNonce, index: r.i })
 			.then(function (d) {
-				if (!d || !d.success) { toast((d && d.data) || 'بازگردانی انجام نشد.'); return; }
+				if (!d || !d.success) { toast((d && d.data) || T('بازگردانی انجام نشد.')); return; }
 				loadState(d.data);
 				closePop(hBtn, hPanel);
-				setStatus('نسخه ' + r.when + ' آمد — ذخیره کنید ●');
+				setStatus(T('نسخه ') + (r.ts ? jText(r.ts) : r.when) + T(' آمد — ذخیره کنید ●'), 'dirty');
 			})
-			.catch(function () { toast('ارتباط با سرور برقرار نشد.'); });
+			.catch(function () { toast(T('ارتباط با سرور برقرار نشد.')); });
 	}
 	function loadState(st) {
 		blocks = [];
@@ -2432,25 +2867,25 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	var lBtn = $('kashi-libbtn'), lPanel = $('kashi-lpanel'), lList = $('kashi-llist'), lSearch = $('kashi-lsearch'), lib = [];
 	function loadLib() {
 		lList.innerHTML = '';
-		hint(lList, 'در حال بارگذاری…');
+		hint(lList, T('در حال بارگذاری…'));
 		post({ action: 'kashi_lib_list', nonce: cfg.libNonce, exclude: cfg.postId })
 			.then(function (d) { lib = (d && d.success) ? d.data : []; renderLib(); })
-			.catch(function () { lList.innerHTML = ''; hint(lList, 'ارتباط با سرور برقرار نشد.'); });
+			.catch(function () { lList.innerHTML = ''; hint(lList, T('ارتباط با سرور برقرار نشد.')); });
 	}
 	function renderLib() {
 		var q = lSearch.value.trim().toLowerCase();
 		lList.innerHTML = '';
 		var items = lib.filter(function (x) { return !q || x.title.toLowerCase().indexOf(q) > -1; });
 		if (!items.length) {
-			hint(lList, lib.length ? 'چیزی پیدا نشد.' : 'کتابخانه خالی است. با دکمه «ذخیره در کتابخانه» کنار هر بخش، آن را اینجا اضافه کنید.');
+			hint(lList, lib.length ? T('چیزی پیدا نشد.') : T('کتابخانه خالی است. با دکمه «ذخیره در کتابخانه» کنار هر بخش، آن را اینجا اضافه کنید.'));
 			return;
 		}
 		items.forEach(function (x) {
-			var el = row(x.title, x.n + ' بخش · ' + x.ago, false), bs = el.querySelector('.btns');
-			btn(bs, 'کپی', function () { insertCopy(x); }, 'copy');
-			btn(bs, 'لینک‌شده', function () { insertLinked(x); }, 'link');
+			var el = row(x.title, x.n + T(' بخش · ') + x.ago, false), bs = el.querySelector('.btns');
+			btn(bs, T('کپی'), function () { insertCopy(x); }, 'copy');
+			btn(bs, T('لینک‌شده'), function () { insertLinked(x); }, 'link');
 			var a = document.createElement('a');
-			a.href = cfg.editBase + x.id; a.target = '_blank'; a.innerHTML = ic('external'); a.title = 'ویرایش';
+			a.href = cfg.editBase + x.id; a.target = '_blank'; a.innerHTML = ic('external'); a.title = T('ویرایش');
 			a.addEventListener('click', function (e) { e.stopPropagation(); });
 			bs.appendChild(a);
 			lList.appendChild(el);
@@ -2468,27 +2903,33 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function insertCopy(x) {
 		post({ action: 'kashi_lib_get', nonce: cfg.libNonce, id: x.id })
 			.then(function (d) {
-				if (!d || !d.success) { toast((d && d.data) || 'درج انجام نشد.'); return; }
-				if (!d.data.length) { toast('این مورد خالی است.'); return; }
+				if (!d || !d.success) { toast((d && d.data) || T('درج انجام نشد.')); return; }
+				if (!d.data.length) { toast(T('این مورد خالی است.')); return; }
 				insertAt(d.data.map(function (b) { return { name: b.name || x.title, code: b.code, full: b.full, dev: b.dev }; }));
 			})
-			.catch(function () { toast('ارتباط با سرور برقرار نشد.'); });
+			.catch(function () { toast(T('ارتباط با سرور برقرار نشد.')); });
 	}
 	function insertLinked(x) {
 		insertAt([{ name: x.title, code: '[kashi id="' + x.id + '"]', full: true }]);
 	}
 	function saveToLib(b) {
-		var name = prompt('نام این بخش در کتابخانه:', b.name || '');
+		var name = prompt(T('نام این بخش در کتابخانه:'), b.name || '');
 		if (name === null) { return; }
 		post({
 			action: 'kashi_lib_save', nonce: cfg.libNonce, name: name, scope: scope.checked ? '1' : '0',
 			blocks: JSON.stringify([{ name: b.name, code: codeOf(b), full: b.full, dev: b.dev || [] }])
 		}).then(function (d) {
-			if (d && d.success) { toast('«' + (name || b.name) + '» در کتابخانه ذخیره شد', 'ok'); }
-			else { toast((d && d.data) || 'ذخیره در کتابخانه انجام نشد.'); }
-		}).catch(function () { toast('ارتباط با سرور برقرار نشد.'); });
+			if (d && d.success) { toast('«' + (name || b.name) + T('» در کتابخانه ذخیره شد'), 'ok'); }
+			else { toast((d && d.data) || T('ذخیره در کتابخانه انجام نشد.')); }
+		}).catch(function () { toast(T('ارتباط با سرور برقرار نشد.')); });
 	}
 	popup(lBtn, lPanel, loadLib);
+	(function () { // منوی خروج
+		var ex = $('kashi-exit'), eb = $('kashi-exitbtn');
+		eb.addEventListener('click', function (e) { e.stopPropagation(); var o = !ex.classList.contains('open'); ex.classList.toggle('open', o); eb.setAttribute('aria-expanded', o ? 'true' : 'false'); });
+		document.addEventListener('click', function () { ex.classList.remove('open'); eb.setAttribute('aria-expanded', 'false'); });
+		document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { ex.classList.remove('open'); } });
+	})();
 
 	/* ---------- کتابخانه آیکون ---------- */
 	var iBtn = $('kashi-icobtn'), iPanel = $('kashi-ipanel'), iGrid = $('kashi-igrid'), iSearch = $('kashi-isearch');
@@ -2500,12 +2941,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			(a.style ? ' style="' + a.style + '"' : '') + ' aria-hidden="true">' + x.b + '</svg>';
 	}
 	function loadIcons() {
-		$('kashi-ititle').textContent = iReplace ? 'تعویض آیکون' : 'کتابخانه آیکون';
+		$('kashi-ititle').textContent = iReplace ? T('تعویض آیکون') : T('کتابخانه آیکون');
 		if (icons) { renderIcons(); setTimeout(function () { iSearch.focus(); }, 30); return; }
-		iGrid.innerHTML = ''; hint(iGrid, 'در حال بارگذاری…');
+		iGrid.innerHTML = ''; hint(iGrid, T('در حال بارگذاری…'));
 		fetch(cfg.icons, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
 			.then(function (d) { icons = Array.isArray(d) ? d : []; renderIcons(); iSearch.focus(); })
-			.catch(function () { iGrid.innerHTML = ''; hint(iGrid, 'فهرست آیکون‌ها بارگذاری نشد.'); });
+			.catch(function () { iGrid.innerHTML = ''; hint(iGrid, T('فهرست آیکون‌ها بارگذاری نشد.')); });
 	}
 	function renderIcons() {
 		var q = iSearch.value.trim().toLowerCase();
@@ -2513,7 +2954,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		var list = (icons || []).filter(function (x) {
 			return (!iGroup || x.g === iGroup) && (!q || x.n.indexOf(q) > -1 || x.fa.indexOf(q) > -1);
 		});
-		if (!list.length) { hint(iGrid, 'آیکونی پیدا نشد.'); return; }
+		if (!list.length) { hint(iGrid, T('آیکونی پیدا نشد.')); return; }
 		list.forEach(function (x) {
 			var b = document.createElement('button');
 			b.type = 'button'; b.title = x.fa; b.setAttribute('aria-label', x.fa);
@@ -2533,7 +2974,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		if (cm) { cm.replaceSelection(svg); cm.focus(); }
 		else { var a = ta.selectionStart, z = ta.selectionEnd; ta.value = ta.value.slice(0, a) + svg + ta.value.slice(z); ta.dispatchEvent(new Event('input')); }
 		closePop(iBtn, iPanel);
-		toast('آیکون «' + x.fa + '» درج شد', 'ok');
+		toast(T('آیکون «') + x.fa + T('» درج شد'), 'ok');
 	}
 	iBtn.addEventListener('click', function () { iReplace = null; });
 	popup(iBtn, iPanel, loadIcons);
@@ -2578,13 +3019,13 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 		all.forEach(function (b, bi) {
 			var code = b.code.replace(/<\?[\s\S]*?(\?>|$)/g, '');
-			var bname = 'بخش ' + (bi + 1) + (b.name ? ' «' + b.name + '»' : '');
+			var bname = T('بخش ') + (bi + 1) + (b.name ? ' «' + b.name + '»' : '');
 			if (LINK_RE.test(code)) { linked++; return; }
 			var doc = new DOMParser().parseFromString(code, 'text/html');
 
 			doc.querySelectorAll('script[type="application/ld+json"]').forEach(function (sc) {
 				try { schemaTypes(JSON.parse(sc.textContent), types); }
-				catch (e) { add('error', 'اسکیمای JSON-LD خراب است و گوگل آن را نمی‌خواند', bi, bname + ' — ' + e.message); }
+				catch (e) { add('error', T('اسکیمای JSON-LD خراب است و گوگل آن را نمی‌خواند'), bi, bname + ' — ' + e.message); }
 			});
 			doc.querySelectorAll('script,style,noscript,template').forEach(function (x) { x.remove(); });
 
@@ -2596,24 +3037,24 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				}
 				heads.push({ lv: lv, bi: bi, t: txt(h), bname: bname });
 				if (lv === 1) { h1.push({ bi: bi, t: txt(h), bname: bname }); }
-				if (!txt(h)) { add('warn', 'تیتر خالی <h' + lv + '>', bi, bname); }
+				if (!txt(h)) { add('warn', (T('تیتر خالی ') + '<h') + lv + '>', bi, bname); }
 			});
 			doc.querySelectorAll('img').forEach(function (im) {
 				imgs++;
 				var src = im.getAttribute('src') || im.getAttribute('data-src') || '';
-				if (!im.hasAttribute('alt')) { noAlt++; add('error', 'تصویر بدون متن جایگزین (alt)', bi, bname + ' — ' + shortSrc(src)); }
+				if (!im.hasAttribute('alt')) { noAlt++; add('error', T('تصویر بدون متن جایگزین (alt)'), bi, bname + ' — ' + shortSrc(src)); }
 				if (!(im.getAttribute('width') && im.getAttribute('height')) && !/aspect-ratio/.test(im.getAttribute('style') || '')) { noDim++; }
-				if (/^data:image/i.test(src) && src.length > 20000) { add('warn', 'تصویر حجیم base64 داخل کد؛ آن را در رسانه آپلود کنید', bi, bname); }
+				if (/^data:image/i.test(src) && src.length > 20000) { add('warn', T('تصویر حجیم base64 داخل کد؛ آن را در رسانه آپلود کنید'), bi, bname); }
 			});
 			doc.querySelectorAll('a').forEach(function (a) {
 				var href = (a.getAttribute('href') || '').trim(), label = txt(a) || a.getAttribute('aria-label') || a.getAttribute('title') || '';
 				var imgAlt = a.querySelector('img[alt]:not([alt=""])');
-				if (!href || href === '#' || /^javascript:/i.test(href)) { add('warn', 'لینک بدون آدرس واقعی (href="' + href + '")', bi, bname + (label ? ' — «' + label.slice(0, 40) + '»' : '')); }
-				if (!label && !imgAlt) { add('warn', 'لینک بدون متن؛ برای لینک آیکونی aria-label بگذارید', bi, bname + ' — ' + shortSrc(href)); }
+				if (!href || href === '#' || /^javascript:/i.test(href)) { add('warn', (T('لینک بدون آدرس واقعی (href=') + '"') + href + '")', bi, bname + (label ? ' — «' + label.slice(0, 40) + '»' : '')); }
+				if (!label && !imgAlt) { add('warn', T('لینک بدون متن؛ برای لینک آیکونی aria-label بگذارید'), bi, bname + ' — ' + shortSrc(href)); }
 			});
 			doc.querySelectorAll('[id]').forEach(function (el) {
 				var id = el.id;
-				if (ids[id] !== undefined && ids[id] !== bi) { add('warn', 'شناسه تکراری id="' + id + '" در دو بخش', bi, bname); }
+				if (ids[id] !== undefined && ids[id] !== bi) { add('warn', (T('شناسه تکراری id=') + '"') + id + ('"' + T(' در دو بخش')), bi, bname); }
 				ids[id] = bi;
 			});
 			words += (txt(doc.body).match(/\S+/g) || []).length;
@@ -2622,47 +3063,47 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		// H1
 		if (!cfg.isSection) {
 			if (layout === 'default') {
-				if (h1.length) { add('error', 'در طرح «پیش‌فرض قالب»، خود قالب عنوان صفحه را H1 می‌کند؛ H1 داخل بخش‌ها تکراری است — آن را h2 کنید', h1[0].bi, h1.map(function (x) { return x.bname; }).join('، ')); }
-				else { add('ok', 'H1 صفحه توسط قالب ساخته می‌شود'); }
+				if (h1.length) { add('error', T('در طرح «پیش‌فرض قالب»، خود قالب عنوان صفحه را H1 می‌کند؛ H1 داخل بخش‌ها تکراری است — آن را h2 کنید'), h1[0].bi, h1.map(function (x) { return x.bname; }).join(T('، '))); }
+				else { add('ok', T('H1 صفحه توسط قالب ساخته می‌شود')); }
 			} else if (!h1.length) {
-				add('error', 'صفحه H1 ندارد؛ در طرح تمام‌عرض/بوم عنوان قالب نمایش داده نمی‌شود، پس یک <h1> در بخش اول بگذارید', 0);
+				add('error', (T('صفحه H1 ندارد؛ در طرح تمام‌عرض/بوم عنوان قالب نمایش داده نمی‌شود، پس یک ') + '<h1>' + T(' در بخش اول بگذارید')), 0);
 			} else if (h1.length > 1) {
-				add('error', 'صفحه ' + h1.length + ' تیتر H1 دارد؛ فقط یکی بگذارید و بقیه را h2 کنید', h1[1].bi, h1.map(function (x) { return x.bname + ': ' + x.t.slice(0, 30); }).join(' | '));
+				add('error', T('صفحه ') + h1.length + T(' تیتر H1 دارد؛ فقط یکی بگذارید و بقیه را h2 کنید'), h1[1].bi, h1.map(function (x) { return x.bname + ': ' + x.t.slice(0, 30); }).join(' | '));
 			} else {
-				add('ok', 'یک H1: «' + h1[0].t.slice(0, 60) + '»');
+				add('ok', T('یک H1: «') + h1[0].t.slice(0, 60) + '»');
 			}
 			if (h1Demoted.length && layout !== 'default') {
-				add('ok', 'H1 نسخه مخصوص دستگاه خودکار h2 می‌شود (ظاهر تغییر نمی‌کند): ' + h1Demoted.join('، '));
+				add('ok', T('H1 نسخه مخصوص دستگاه خودکار h2 می‌شود (ظاهر تغییر نمی‌کند): ') + h1Demoted.join(T('، ')));
 			}
 		}
 		// ترتیب تیترها
 		var prev = (layout === 'default') ? 1 : 0, skips = 0;
 		heads.forEach(function (h) {
-			if (prev && h.lv > prev + 1 && skips < 5) { skips++; add('warn', 'پرش در ترتیب تیترها: h' + prev + ' ← h' + h.lv, h.bi, h.bname + ' — «' + h.t.slice(0, 40) + '»'); }
+			if (prev && h.lv > prev + 1 && skips < 5) { skips++; add('warn', T('پرش در ترتیب تیترها: h') + prev + ' ← h' + h.lv, h.bi, h.bname + ' — «' + h.t.slice(0, 40) + '»'); }
 			prev = h.lv;
 		});
-		if (heads.length && !skips) { add('ok', 'ترتیب تیترها درست است (' + heads.length + ' تیتر)'); }
+		if (heads.length && !skips) { add('ok', T('ترتیب تیترها درست است (') + heads.length + T(' تیتر)')); }
 		// تصاویر
-		if (imgs && !noAlt) { add('ok', 'همه ' + imgs + ' تصویر alt دارند'); }
-		if (noDim) { add('info', noDim + ' تصویر width و height ندارد؛ اضافه کردنشان از پرش صفحه (CLS) جلوگیری می‌کند'); }
-		if (imgs) { add('ok', 'تصاویر خودکار lazy می‌شوند و تصویر اول بخش اول با اولویت بالا لود می‌شود'); }
+		if (imgs && !noAlt) { add('ok', T('همه ') + imgs + T(' تصویر alt دارند')); }
+		if (noDim) { add('info', noDim + T(' تصویر width و height ندارد؛ اضافه کردنشان از پرش صفحه (CLS) جلوگیری می‌کند')); }
+		if (imgs) { add('ok', T('تصاویر خودکار lazy می‌شوند و تصویر اول بخش اول با اولویت بالا لود می‌شود')); }
 		// متن
 		if (!cfg.isSection) {
-			if (words < 300) { add('warn', 'محتوای متنی کم است (' + words + ' کلمه)؛ صفحه‌های مهم معمولاً ۳۰۰+ کلمه دارند'); }
-			else { add('ok', 'حجم متن: ' + words + ' کلمه'); }
+			if (words < 300) { add('warn', T('محتوای متنی کم است (') + words + T(' کلمه)؛ صفحه‌های مهم معمولاً ۳۰۰+ کلمه دارند')); }
+			else { add('ok', T('حجم متن: ') + words + T(' کلمه')); }
 		}
 		// اسکیما
 		if (types.length) {
-			add('ok', 'اسکیما در <head> چاپ می‌شود: ' + types.join('، '));
+			add('ok', (T('اسکیما در ') + '<head>' + T(' چاپ می‌شود: ')) + types.join(T('، ')));
 			if (cfg.seoPlugin) {
 				var dup = types.filter(function (t) { return SCHEMA_BY_PLUGIN.indexOf(t) > -1; });
-				if (dup.length) { add('warn', cfg.seoPlugin + ' خودش ' + dup.join('، ') + ' را می‌سازد؛ اسکیمای تکراری را از کد حذف کنید یا در ' + cfg.seoPlugin + ' خاموشش کنید'); }
+				if (dup.length) { add('warn', cfg.seoPlugin + T(' خودش ') + dup.join(T('، ')) + T(' را می‌سازد؛ اسکیمای تکراری را از کد حذف کنید یا در ') + cfg.seoPlugin + T(' خاموشش کنید')); }
 			}
 		}
-		if (linked) { add('info', linked + ' بخش لینک‌شده از کتابخانه است؛ محتوای آن‌ها در صفحه خودشان بررسی می‌شود ولی در سئوی این صفحه حساب می‌شوند'); }
+		if (linked) { add('info', linked + T(' بخش لینک‌شده از کتابخانه است؛ محتوای آن‌ها در صفحه خودشان بررسی می‌شود ولی در سئوی این صفحه حساب می‌شوند')); }
 		// پایه
-		add('ok', 'CSS و فونت‌ها در <head> لود می‌شوند (بدون پرش صفحه) و اسکریپت‌ها در انتهای صفحه');
-		if (!cfg.isSection) { add('ok', 'متن صفحه با هر ذخیره برای ' + (cfg.seoPlugin || 'افزونه سئو') + '، جستجوی سایت و نقشه سایت همگام می‌شود'); }
+		add('ok', (T('CSS و فونت‌ها در ') + '<head>' + T(' لود می‌شوند (بدون پرش صفحه) و اسکریپت‌ها در انتهای صفحه')));
+		if (!cfg.isSection) { add('ok', T('متن صفحه با هر ذخیره برای ') + (cfg.seoPlugin || T('افزونه سئو')) + T('، جستجوی سایت و نقشه سایت همگام می‌شود')); }
 		return res;
 	}
 
@@ -2672,10 +3113,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		sBadge.className = 'kashi-badge ' + (bad ? 'bad' : (warn ? 'warn' : 'ok'));
 		if (!sPanel.classList.contains('open')) { return; }
 		$('kashi-seo-info').textContent = cfg.seoPlugin
-			? 'عنوان سئو، توضیحات متا، کنونیکال، Open Graph و اسکیمای پایه را ' + cfg.seoPlugin + ' می‌سازد و این پلاگین با آن کاملاً سازگار است. اینجا فقط محتوای بخش‌ها بررسی می‌شود.'
-			: 'افزونه سئو (مثل Rank Math یا Yoast) فعال نیست؛ برای عنوان و توضیحات متا، کنونیکال و نقشه سایت یکی نصب کنید.';
+			? T('عنوان سئو، توضیحات متا، کنونیکال، Open Graph و اسکیمای پایه را ') + cfg.seoPlugin + T(' می‌سازد و این پلاگین با آن کاملاً سازگار است. اینجا فقط محتوای بخش‌ها بررسی می‌شود.')
+			: T('افزونه سئو (مثل Rank Math یا Yoast) فعال نیست؛ برای عنوان و توضیحات متا، کنونیکال و نقشه سایت یکی نصب کنید.');
 		sList.innerHTML = '';
-		[['error', 'x-circle', 'مشکلات'], ['warn', 'alert', 'هشدارها'], ['info', 'info', 'پیشنهادها'], ['ok', 'check-circle', 'موارد درست']].forEach(function (g) {
+		[['error', 'x-circle', T('مشکلات')], ['warn', 'alert', T('هشدارها')], ['info', 'info', T('پیشنهادها')], ['ok', 'check-circle', T('موارد درست')]].forEach(function (g) {
 			if (!r[g[0]].length) { return; }
 			var h = document.createElement('div'); h.className = 'kashi-chk-h'; h.innerHTML = esc(g[2]) + '<span>' + r[g[0]].length + '</span>'; sList.appendChild(h);
 			r[g[0]].forEach(function (it) {
@@ -2686,7 +3127,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				el.querySelector('.m').textContent = it.msg;
 				el.querySelector('small').textContent = it.sub;
 				if (it.bi !== undefined) {
-					el.title = 'رفتن به این بخش';
+					el.title = T('رفتن به این بخش');
 					el.addEventListener('click', function (e) { e.stopPropagation(); select(it.bi, true); });
 				}
 				sList.appendChild(el);
@@ -2705,7 +3146,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	var V_SKIP = { style: 1, script: 1, link: 1, meta: 1, title: 1, template: 1, head: 1 };
 	var V_VOID = { area: 1, base: 1, br: 1, col: 1, embed: 1, hr: 1, img: 1, input: 1, link: 1, meta: 1, param: 1, source: 1, track: 1, wbr: 1 };
 	var V_RAW = { script: 1, style: 1, textarea: 1, title: 1 };
-	var MSG_DYN = 'این قسمت را اسکریپت یا شورت‌کد می‌سازد؛ آن را از داخل کد ویرایش کنید.';
+	var MSG_DYN = T('این قسمت را اسکریپت یا شورت‌کد می‌سازد؛ آن را از داخل کد ویرایش کنید.');
 
 	/* تجزیه کد منبع با موقعیت دقیق هر تگ */
 	function vParse(src) {
@@ -2797,9 +3238,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	}
 	/* کنترل‌های رنگ: تغییر زنده در پیش‌نمایش، ثبت در کد هنگام انتخاب نهایی */
 	function vColors(withBg) {
-		var h = '<label class="cl" title="رنگ متن / آیکون"><input type="color" data-c="color"><span>' + ic('drop') + 'رنگ</span></label>';
-		if (withBg) { h += '<label class="cl" title="رنگ پس‌زمینه"><input type="color" data-c="background-color"><span class="bgi">' + ic('drop') + 'پس‌زمینه</span></label>'; }
-		return h + '<button data-v="nocolor" class="ghost" title="برگرداندن رنگ اصلی">' + ic('refresh') + '</button>';
+		var h = ('<label class="cl" title="' + T('رنگ متن / آیکون') + '"><input type="color" data-c="color"><span>') + ic('drop') + (T('رنگ') + '</span></label>');
+		if (withBg) { h += ('<label class="cl" title="' + T('رنگ پس‌زمینه') + '"><input type="color" data-c="background-color"><span class="bgi">') + ic('drop') + (T('پس‌زمینه') + '</span></label>'); }
+		return h + ('<button data-v="nocolor" class="ghost" title="' + T('برگرداندن رنگ اصلی') + '">') + ic('refresh') + '</button>';
 	}
 	function vBindColors(bar, el, bi, path) {
 		var cs = vDoc.defaultView.getComputedStyle(el);
@@ -2820,7 +3261,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				if (vEditTag(bi, path, function (t) { return vSetStyle(vSetStyle(t, 'color', ''), 'background-color', ''); })) {
 					el.style.removeProperty('color'); el.style.removeProperty('background-color');
 					if (!el.getAttribute('style')) { el.removeAttribute('style'); }
-					toast('رنگ اصلی برگشت', 'ok');
+					toast(T('رنگ اصلی برگشت'), 'ok');
 				}
 			});
 		}
@@ -2835,7 +3276,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		if (blocks[loc.bi].uid !== activeUid) { select(loc.bi, false); }
 		vSel = { bi: loc.bi, path: loc.path, el: sv, svg: true };
 		sv.setAttribute('data-kv-edit', '');
-		var bar = vBar(sv, '<button data-v="swap">' + ic('shapes') + 'تعویض آیکون</button>' + vColors(false) + '<button data-v="done">' + ic('check') + '</button>');
+		var bar = vBar(sv, '<button data-v="swap">' + ic('shapes') + (T('تعویض آیکون') + '</button>') + vColors(false) + '<button data-v="done">' + ic('check') + '</button>');
 		bar.querySelector('[data-v=swap]').addEventListener('click', function () {
 			iReplace = { bi: loc.bi, path: loc.path, el: sv };
 			openIcons();
@@ -2856,7 +3297,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		var nw = t.content.firstElementChild;
 		if (vSel && vSel.el === r.el) { vSel = null; vHideBar(); }
 		r.el.replaceWith(nw);
-		toast('آیکون عوض شد', 'ok');
+		toast(T('آیکون عوض شد'), 'ok');
 	}
 
 	function vDelAttr(tag, name) { return tag.replace(new RegExp('\\s' + name + '\\s*=\\s*("[^"]*"|\'[^\']*\'|[^\\s>]+)', 'i'), ''); }
@@ -2889,8 +3330,8 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		while (outer.parentElement && (up = outer.parentElement.closest('[data-kashi-block]'))) { outer = up; }
 		var uid = outer.getAttribute('data-kashi-block'), bi = -1;
 		for (var k = 0; k < blocks.length; k++) { if (blocks[k].uid === uid) { bi = k; break; } }
-		if (bi < 0) { return { err: 'این قسمت جزو این صفحه نیست (مثلاً هدر یا فوتر)؛ از ویرایشگر خودش ویرایش کنید.' }; }
-		if (blk !== outer) { return { err: 'این کاشی لینک‌شده از کتابخانه است؛ اصل آن را ویرایش کنید تا همه‌جا عوض شود.' }; }
+		if (bi < 0) { return { err: T('این قسمت جزو این صفحه نیست (مثلاً هدر یا فوتر)؛ از ویرایشگر خودش ویرایش کنید.') }; }
+		if (blk !== outer) { return { err: T('این کاشی لینک‌شده از کتابخانه است؛ اصل آن را ویرایش کنید تا همه‌جا عوض شود.') }; }
 		var path = vPath(el, outer);
 		return path ? { bi: bi, root: outer, path: path } : { err: MSG_DYN };
 	}
@@ -2979,7 +3420,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			if (!node || node.tag !== 'img' || vAttrOf(code.slice(node.start, node.tagEnd), 'src') !== (el.getAttribute('src') || '')) { toast(MSG_DYN); return; }
 			vSel = { bi: loc.bi, path: loc.path, el: el, img: true };
 			el.setAttribute('data-kv-edit', '');
-			var bar = vBar(el, '<button data-v="img">' + ic('image') + 'تعویض تصویر</button><input data-v="alt" placeholder="متن جایگزین (alt)" value="' + vEscAttr(el.getAttribute('alt') || '') + '"><button data-v="done">' + ic('check') + '</button>');
+			var bar = vBar(el, '<button data-v="img">' + ic('image') + (T('تعویض تصویر') + '</button><input data-v="alt" placeholder="' + T('متن جایگزین (alt)') + '" value="') + vEscAttr(el.getAttribute('alt') || '') + '"><button data-v="done">' + ic('check') + '</button>');
 			bar.querySelector('[data-v=img]').addEventListener('click', function () {
 				pickImage(function (att) {
 					var ok = vEditTag(loc.bi, loc.path, function (t) {
@@ -2992,7 +3433,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 					if (ok) {
 						el.removeAttribute('srcset'); el.removeAttribute('sizes'); el.src = att.url;
 						if (att.alt && !el.getAttribute('alt')) { el.setAttribute('alt', att.alt); bar.querySelector('[data-v=alt]').value = att.alt; }
-						toast('تصویر عوض شد', 'ok');
+						toast(T('تصویر عوض شد'), 'ok');
 					}
 				});
 			});
@@ -3016,16 +3457,16 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			if (rg) { var sl = vDoc.defaultView.getSelection(); sl.removeAllRanges(); sl.addRange(rg); }
 		}
 		var a = el.closest('a'), aLoc = a ? vLocate(a) : null;
-		var html = '<span class="lb">' + ic('pen') + 'ویرایش متن</span>';
-		if (aLoc && aLoc.path) { html += '<input data-v="href" placeholder="آدرس لینک" value="' + vEscAttr(a.getAttribute('href') || '') + '">'; }
-		html += vColors(true) + '<button data-v="done">' + ic('check') + 'تمام</button>';
+		var html = '<span class="lb">' + ic('pen') + (T('ویرایش متن') + '</span>');
+		if (aLoc && aLoc.path) { html += ('<input data-v="href" placeholder="' + T('آدرس لینک') + '" value="') + vEscAttr(a.getAttribute('href') || '') + '">'; }
+		html += vColors(true) + '<button data-v="done">' + ic('check') + (T('تمام') + '</button>');
 		var bar2 = vBar(el, html);
 		vBindColors(bar2, el, loc.bi, loc.path);
 		var hin = bar2.querySelector('[data-v=href]');
 		if (hin) {
 			hin.addEventListener('change', function () {
 				var v = this.value.trim();
-				if (vEditTag(aLoc.bi, aLoc.path, function (t) { return vSetAttr(t, 'href', v); })) { a.setAttribute('href', v); toast('لینک عوض شد', 'ok'); }
+				if (vEditTag(aLoc.bi, aLoc.path, function (t) { return vSetAttr(t, 'href', v); })) { a.setAttribute('href', v); toast(T('لینک عوض شد'), 'ok'); }
 			});
 		}
 		bar2.querySelector('[data-v=done]').addEventListener('click', vFinish);
@@ -3033,11 +3474,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 	function pickImage(cb) {
 		if (window.wp && wp.media) {
-			var f = wp.media({ title: 'انتخاب تصویر', library: { type: 'image' }, multiple: false, button: { text: 'استفاده از این تصویر' } });
+			var f = wp.media({ title: T('انتخاب تصویر'), library: { type: 'image' }, multiple: false, button: { text: T('استفاده از این تصویر') } });
 			f.on('select', function () { cb(f.state().get('selection').first().toJSON()); });
 			f.open();
 		} else {
-			var u = window.prompt('آدرس تصویر جدید:');
+			var u = window.prompt(T('آدرس تصویر جدید:'));
 			if (u) { cb({ url: u }); }
 		}
 	}
@@ -3096,7 +3537,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			'[data-kashi-block] img[data-kv-hover]{cursor:pointer}' +
 			'[data-kv-edit]{outline:2px solid #7c6cff!important;outline-offset:3px;border-radius:2px}' +
 			'[contenteditable][data-kv-edit]{cursor:text;caret-color:#7c6cff}' +
-			'#kashi-vbar{position:absolute;z-index:2147483647;display:none;align-items:center;gap:6px;padding:6px;background:#13161d;color:#e6e8ee;border:1px solid #2e3442;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);font:12px/1.4 Vazirmatn,Tahoma,sans-serif;direction:rtl}' +
+			'#kashi-vbar{position:absolute;z-index:2147483647;display:none;align-items:center;gap:6px;padding:6px;background:#13161d;color:#e6e8ee;border:1px solid #2e3442;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);font:12px/1.4 Vazirmatn,Tahoma,sans-serif;direction:' + cfg.dir + '}' +
 			'#kashi-vbar .lb{display:inline-flex;align-items:center;gap:6px;padding:0 6px;color:#8b92a5}' +
 			'#kashi-vbar button{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:0;border-radius:7px;background:#6b5af2;color:#fff;font:inherit;cursor:pointer}' +
 			'#kashi-vbar button:hover{background:#6b5af2}' +
@@ -3128,7 +3569,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		vBtn.addEventListener('click', function () {
 			vOn = !vOn;
 			vBtn.classList.toggle('on', vOn);
-			if (vOn) { vInstall(); toast('روی هر متن کلیک کنید و بنویسید؛ روی تصویر برای تعویض. Enter = تمام', 'ok'); }
+			if (vOn) { vInstall(); toast(T('روی هر متن کلیک کنید و بنویسید؛ روی تصویر برای تعویض. Enter = تمام'), 'ok'); }
 			else { vUninstall(); }
 		});
 	}
@@ -3150,13 +3591,16 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	}
 	window.addEventListener('resize', fitFrame);
 	fitFrame();
-	document.querySelectorAll('.kashi-dev button').forEach(function (b) {
-		b.addEventListener('click', function () {
-			document.querySelectorAll('.kashi-dev button').forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
-			b.classList.add('on'); b.setAttribute('aria-pressed', 'true');
-			devW = +b.getAttribute('data-w');
-			fitFrame();
+	function setDevice(w) {
+		document.querySelectorAll('.kashi-dev button').forEach(function (x) {
+			var on = +x.getAttribute('data-w') === +w;
+			x.classList.toggle('on', on); x.setAttribute('aria-pressed', on ? 'true' : 'false');
 		});
+		devW = +w;
+		fitFrame();
+	}
+	document.querySelectorAll('.kashi-dev button').forEach(function (b) {
+		b.addEventListener('click', function () { setDevice(b.getAttribute('data-w')); });
 	});
 
 	var div = $('kashi-div'), pane = document.querySelector('.kashi-left'), main = document.querySelector('.kashi-main');
@@ -3192,7 +3636,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 	/* ---------- شروع ---------- */
 	(cfg.blocks || []).forEach(function (b) { blocks.push(makeBlock(b)); });
-	if (!blocks.length) { blocks.push(makeBlock({ name: 'هیرو' })); }
+	if (!blocks.length) { blocks.push(makeBlock({ name: T('هیرو') })); }
 	a11y(document);
 	renderList();
 	select(0, false);
@@ -3209,11 +3653,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	public static function ajax_save() {
 		$id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( ! $id || ! check_ajax_referer( 'kashi_save_' . $id, 'nonce', false ) ) {
-			wp_send_json_error( 'نشست شما منقضی شده؛ قبل از بستن، کدها را کپی کنید و صفحه را دوباره باز کنید.' );
+			wp_send_json_error( self::t( 'نشست شما منقضی شده؛ قبل از بستن، کدها را کپی کنید و صفحه را دوباره باز کنید.' ) );
 		}
 		$post = get_post( $id );
 		if ( ! $post || ! in_array( $post->post_type, self::post_types(), true ) || ! current_user_can( 'edit_post', $id ) ) {
-			wp_send_json_error( 'اجازه ویرایش ندارید.' );
+			wp_send_json_error( self::t( 'اجازه ویرایش ندارید.' ) );
 		}
 
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON کد خام؛ در compile بر اساس دسترسی کنترل می‌شود.
@@ -3228,7 +3672,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 
 		// اولین ذخیره بعد از نصب این نسخه: وضعیت قبلی هم در تاریخچه بماند
 		if ( ! self::get_revs( $id ) && self::get_blocks( $id ) ) {
-			self::push_rev( $id, self::snapshot( $id ), get_post_modified_time( 'U', true, $post ), 'نسخه قبلی', ! self::post_untrusted( $id ) );
+			self::push_rev( $id, self::snapshot( $id ), get_post_modified_time( 'U', true, $post ), self::t( 'نسخه قبلی' ), ! self::post_untrusted( $id ) );
 		}
 
 		update_post_meta( $id, '_lsec_untrusted', $trusted ? '0' : '1' );
@@ -3304,12 +3748,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	public static function ajax_rev_get() {
 		$id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 		if ( ! $id || ! check_ajax_referer( 'kashi_save_' . $id, 'nonce', false ) || ! current_user_can( 'edit_post', $id ) ) {
-			wp_send_json_error( 'اجازه ندارید یا نشست منقضی شده است.' );
+			wp_send_json_error( self::t( 'اجازه ندارید یا نشست منقضی شده است.' ) );
 		}
 		$revs = self::get_revs( $id );
 		$i    = isset( $_POST['index'] ) ? absint( $_POST['index'] ) : 0;
 		if ( ! isset( $revs[ $i ]['data'] ) ) {
-			wp_send_json_error( 'این نسخه پیدا نشد.' );
+			wp_send_json_error( self::t( 'این نسخه پیدا نشد.' ) );
 		}
 		$data = $revs[ $i ]['data'];
 		$safe = isset( $revs[ $i ]['trusted'] ) ? (bool) $revs[ $i ]['trusted'] : ! self::post_untrusted( $id );
@@ -3324,7 +3768,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	 * ------------------------------------------------------------------ */
 	private static function lib_check() {
 		if ( ! check_ajax_referer( 'kashi_lib', 'nonce', false ) || ! current_user_can( 'edit_pages' ) ) {
-			wp_send_json_error( 'اجازه ندارید یا نشست منقضی شده است.' );
+			wp_send_json_error( self::t( 'اجازه ندارید یا نشست منقضی شده است.' ) );
 		}
 	}
 
@@ -3348,9 +3792,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			}
 			$out[] = array(
 				'id'    => $p->ID,
-				'title' => '' !== $p->post_title ? $p->post_title : ( 'کاشی #' . $p->ID ),
+				'title' => '' !== $p->post_title ? $p->post_title : ( self::t( 'کاشی #' ) . $p->ID ),
 				'n'     => count( self::get_blocks( $p->ID ) ),
-				'ago'   => human_time_diff( (int) get_post_modified_time( 'U', true, $p ), time() ) . ' پیش',
+				'ago'   => self::ago( (int) get_post_modified_time( 'U', true, $p ) ),
 			);
 		}
 		wp_send_json_success( $out );
@@ -3360,7 +3804,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		self::lib_check();
 		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
 		if ( ! $id || self::CPT !== get_post_type( $id ) || ! current_user_can( 'edit_post', $id ) ) {
-			wp_send_json_error( 'این مورد در کتابخانه پیدا نشد.' );
+			wp_send_json_error( self::t( 'این مورد در کتابخانه پیدا نشد.' ) );
 		}
 		$src = self::get_blocks( $id );
 		if ( self::post_untrusted( $id ) || ! current_user_can( 'unfiltered_html' ) ) {
@@ -3378,12 +3822,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		self::lib_check();
 		$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 		if ( '' === $name ) {
-			$name = 'بخش ذخیره‌شده';
+			$name = self::t( 'بخش ذخیره‌شده' );
 		}
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$blocks = self::blocks_from_json( isset( $_POST['blocks'] ) ? wp_unslash( $_POST['blocks'] ) : '' );
 		if ( ! $blocks ) {
-			wp_send_json_error( 'این بخش خالی است.' );
+			wp_send_json_error( self::t( 'این بخش خالی است.' ) );
 		}
 		$trusted = current_user_can( 'unfiltered_html' );
 		if ( ! $trusted ) {
@@ -3747,7 +4191,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				// طرح تمام‌عرض/بوم: محتوا خودش لبه‌تالبه است؛ بخش‌های عادی وسط‌چین می‌شوند
 				$style = ! empty( $b['full'] ) ? '' : ' style="max-width:' . (int) $box_width . 'px;margin-left:auto;margin-right:auto"';
 			}
-			$inner .= '<div class="kashi-block kashi-b-' . $uid . '" data-kashi-block="' . $uid . '"' . $style . '>' . do_shortcode( $c['html'] ) . '</div>';
+			$xcls   = ! empty( $b['cls'] ) ? ' ' . esc_attr( preg_replace( '/[^A-Za-z0-9_\- ]/', '', (string) $b['cls'] ) ) : '';
+			$xid    = ! empty( $b['eid'] ) ? ' id="' . esc_attr( preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $b['eid'] ) ) . '"' : '';
+			$inner .= '<div' . $xid . ' class="kashi-block kashi-b-' . $uid . $xcls . '" data-kashi-block="' . $uid . '"' . $style . '>' . do_shortcode( $c['html'] ) . '</div>';
 		}
 
 		array_pop( self::$render_stack );
@@ -3862,7 +4308,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			}
 		}
 		if ( '' !== $out ) {
-			echo "\n<!-- کاشی -->\n" . $out . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CSS/JSON ذخیره‌شده توسط مدیر
+			echo "\n<!-- Kashi -->\n" . $out . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CSS/JSON ذخیره‌شده توسط مدیر
 		}
 	}
 
@@ -3969,7 +4415,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		header( 'X-Robots-Tag: noindex, nofollow' );
 		get_header();
 		if ( isset( self::$hf_override['header'] ) || isset( self::$hf_override['footer'] ) ) {
-			echo '<div style="margin:48px auto;max-width:1100px;min-height:55vh;border:2px dashed rgba(124,108,255,.35);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#8b92a5;font:15px Tahoma,sans-serif">محتوای صفحه</div>';
+			echo '<div style="margin:48px auto;max-width:1100px;min-height:55vh;border:2px dashed rgba(124,108,255,.35);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#8b92a5;font:15px Tahoma,sans-serif">' . self::t( 'محتوای صفحه' ) . '</div>';
 		} else {
 			echo self::shortcode( array( 'id' => $id ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
@@ -4328,7 +4774,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 define( 'KASHI_FILE', __FILE__ );
 require_once __DIR__ . '/includes/class-kashi-updater.php';
 require_once __DIR__ . '/includes/class-kashi-net.php';
+require_once __DIR__ . '/includes/class-kashi-about.php';
 
 Kashi::init();
 Kashi_Updater::init( __FILE__, Kashi::VERSION );
 Kashi_Net::init( __FILE__ );
+Kashi_About::init( __FILE__ );
