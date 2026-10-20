@@ -1,0 +1,40 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "meta": {
+    "title": "کاشی — دموی زنده",
+    "author": "KaroRostampour",
+    "description": "Try Kashi, the code-first WordPress page builder, with a ready-made demo page.",
+    "categories": [
+      "Page builder"
+    ]
+  },
+  "landingPage": "/wp-admin/admin-post.php?action=kashi_edit&post=1000",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "login": true,
+  "steps": [
+    {
+      "step": "setSiteLanguage",
+      "language": "fa_IR"
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "git:directory",
+        "url": "https://github.com/KaroRostampour/kashi",
+        "ref": "main",
+        "refType": "branch"
+      },
+      "options": {
+        "activate": true,
+        "targetFolderName": "kashi"
+      }
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php\nrequire_once '/wordpress/wp-load.php';\nupdate_option( 'kashi_lang', 'fa' );\nupdate_option( 'kashi_calendar', 'auto' );\n$dir  = WP_PLUGIN_DIR . '/kashi';\n$pats = json_decode( file_get_contents( $dir . '/assets/patterns.json' ), true );\n$tr   = 'fa' === 'fa' ? array() : (array) json_decode( (string) @file_get_contents( $dir . '/languages/fa.json' ), true );\n$raw  = array();\nforeach ( array( 'hero-split', 'features', 'categories', 'products', 'stats', 'testimonials', 'faq', 'cta' ) as $pid ) {\n\tforeach ( $pats as $p ) {\n\t\tif ( $p['id'] === $pid ) {\n\t\t\t$raw[] = array( 'uid' => substr( str_replace( '-', '', $pid ), 0, 12 ), 'name' => isset( $tr[ $p['name'] ] ) ? $tr[ $p['name'] ] : $p['name'], 'code' => $p['fa'], 'full' => true );\n\t\t}\n\t}\n}\n$id = wp_insert_post( array( 'import_id' => 1000, 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'دمو کاشی', 'post_name' => 'kashi-demo' ) );\n$r  = new ReflectionClass( 'Kashi' );\n$nb = $r->getMethod( 'normalize_blocks' );\n$nb->setAccessible( true );\n$cb = $r->getMethod( 'compile_blocks' );\n$cb->setAccessible( true );\n$blocks = $nb->invoke( null, $raw );\nupdate_post_meta( $id, '_lsec_blocks', wp_slash( $blocks ) );\nupdate_post_meta( $id, '_lsec_scope', '1' );\nupdate_post_meta( $id, '_lsec_untrusted', '0' );\nupdate_post_meta( $id, '_lsec_compiled', wp_slash( $cb->invoke( null, $blocks, true, true ) ) );\nupdate_post_meta( $id, '_lsec_enabled', '1' );\nupdate_post_meta( $id, '_lsec_layout', 'full' );\nupdate_option( 'show_on_front', 'page' );\nupdate_option( 'page_on_front', $id );\n"
+    }
+  ]
+}

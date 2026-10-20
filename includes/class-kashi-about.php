@@ -258,6 +258,9 @@ final class Kashi_About {
 						array( Kashi::t( 'امنیت' ), Kashi::t( 'آپدیت امضاشده، مدل اعتماد کاربران' ) ),
 						array( Kashi::t( 'کتابخانه آیکون' ), Kashi::t( '۳۰۰+ آیکون مینیمال و محصول' ) ),
 						array( Kashi::t( '۱۰ زبان' ), Kashi::t( 'با تقویم شمسی و میلادی' ) ),
+						array( Kashi::t( 'سکشن‌های آماده' ), Kashi::t( '۱۵ سکشن شیک: هیرو، محصولات، سؤالات، هدر و فوتر' ) ),
+						array( Kashi::t( 'خروجی / ورودی' ), Kashi::t( 'انتقال کاشی‌ها و صفحه‌ها بین سایت‌ها' ) ),
+						array( Kashi::t( 'اینترنت ملی و سرعت' ), Kashi::t( 'بدون وابستگی به سرویس‌های خارجی' ) ),
 					);
 					foreach ( $feats as $f ) {
 						echo '<div>' . esc_html( $f[0] ) . '<small>' . esc_html( $f[1] ) . '</small></div>';

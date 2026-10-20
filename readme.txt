@@ -3,7 +3,7 @@ Contributors: karorostampour
 Tags: page builder, code editor, sections, lightweight, seo
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,12 @@ Created by KaroRostampour — https://github.com/KaroRostampour/kashi
 <?php defined( 'ABSPATH' ) || exit;
 
 == تغییرات ==
+
+= 2.1.0 =
+* سکشن‌های آماده: دکمه «افزودن بخش» حالا یک گالری با پیش‌نمایش زنده باز می‌کند؛ ۱۵ سکشن شیک و ریسپانسیو (هیرو، ویژگی‌ها، مراحل کار، دسته‌بندی، کارت محصول، آمار، نظرات، لوگوی برندها، درباره ما، سؤالات متداول با اسکیمای FAQPage، فراخوان، تماس، هدر و فوتر) به فارسی و انگلیسی، با دسته‌بندی و جستجو. «بخش خالی» هم مثل قبل هست
+* رنگ اصلی هر سکشن آماده با یک متغیر (--a) عوض می‌شود؛ آماده برای رنگ‌های سراسری سایت (--kashi-accent)
+* دموی زنده در WordPress Playground (playground/blueprint.json) و دکمه «امتحان زنده» در README
+* English: ready-made sections gallery with live thumbnails (15 responsive sections in Persian and English); WordPress Playground live demo.
 
 = 2.0.0 =
 * ۱۰ زبان: انگلیسی، کوردی سورانی، فارسی، عربی، ترکی، آلمانی، فرانسوی، اسپانیایی، روسی و چینی — همه منوها، پیام‌ها، ویرایشگر و تاریخ و ساعت به زبان انتخابی؛ چیدمان راست‌به‌چپ / چپ‌به‌راست خودکار؛ تقویم شمسی یا میلادی (کاشی ← تنظیمات ← زبان)

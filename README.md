@@ -5,11 +5,16 @@
 **The code-first page builder for WordPress.**
 Build every page tile by tile with your own HTML, CSS and JavaScript — written by hand or by AI — and see it live inside your real theme.
 
-![Version](https://img.shields.io/badge/version-2.0.0-6c5ce7)
+![Version](https://img.shields.io/badge/version-2.1.0-6c5ce7)
 ![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4)
 ![License](https://img.shields.io/badge/license-GPL--2.0--or--later-2ea44f)
 ![Languages](https://img.shields.io/badge/languages-10-ff9f43)
+
+[![Try it live](https://img.shields.io/badge/%E2%96%B6%20Try%20it%20live-WordPress%20Playground-3858e9?style=for-the-badge&logo=wordpress&logoColor=white)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/KaroRostampour/kashi/main/playground/blueprint.json)
+[![دموی فارسی](https://img.shields.io/badge/%E2%96%B6%20%D8%AF%D9%85%D9%88%DB%8C%20%D8%B2%D9%86%D8%AF%D9%87-%D9%81%D8%A7%D8%B1%D8%B3%DB%8C-6c5ce7?style=for-the-badge&logo=wordpress&logoColor=white)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/KaroRostampour/kashi/main/playground/blueprint-fa.json)
+
+<sub>Opens a private WordPress in your browser with Kashi and a demo page — nothing to install, nothing to sign up for.</sub>
 
 [English](#english) · [فارسی](#فارسی)
 
@@ -32,6 +37,7 @@ It is built for designers who already write code, or who let ChatGPT, Claude or 
 | | |
 |---|---|
 | ⚡ **Live editor** | Full-screen editor with a real-theme preview at true device widths (1440 / 1280 / 768 / 390). |
+| ✨ **15 ready-made sections** | Hero, features, steps, categories, product cards, stats, testimonials, brand logos, about, FAQ (with schema), CTA, contact, header and footer — responsive, accessible, Persian and English. Insert one, then make it yours with Direct edit. |
 | 🧩 **Tiles** | Paste a whole HTML document or bare CSS/JS — Kashi detects the type and puts every part in the right place. Each tile's CSS is scoped to itself. |
 | 🎨 **Direct edit** | Click any text, link, image, color or icon in the preview and change it without touching code. |
 | 📐 **Spacing panel** | Elementor-style margin & padding with linked sides, units (px, %, em, rem, vh, vw) and separate values per device; background, corner radius, min-height, CSS ID and class. |
@@ -45,6 +51,10 @@ It is built for designers who already write code, or who let ChatGPT, Claude or 
 | 🔄 **Transfer** | Export tiles, headers/footers and pages to one file and import them on another site. |
 | 🛡️ **Secure updates** | Updates straight from GitHub, verified with SHA-256; optional Ed25519-signed private update server and signed offline updates. |
 | 🌐 **Offline mode** | A "national internet" mode that stops the dashboard from hanging on blocked foreign services, plus a bundled Vazirmatn font. |
+
+### Try it first
+
+Click **[▶ Try it live](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/KaroRostampour/kashi/main/playground/blueprint.json)** — WordPress Playground starts a throw-away WordPress site in your browser with Kashi installed and a demo page open in the editor. Everything stays in your browser and disappears when you close the tab.
 
 ### Installation
 
@@ -93,6 +103,7 @@ Kashi is free software, so anyone may study, change and share it under the GPL. 
 ### امکانات
 
 - ⚡ **ویرایشگر زنده** تمام‌صفحه با پیش‌نمایش داخل قالب واقعی سایت، با عرض واقعی هر دستگاه (۱۴۴۰ / ۱۲۸۰ / ۷۶۸ / ۳۹۰)
+- ✨ **۱۵ سکشن آماده**: هیرو، ویژگی‌ها، مراحل کار، دسته‌بندی‌ها، کارت محصول، آمار، نظرات مشتریان، لوگوی برندها، درباره ما، سؤالات متداول (با اسکیما)، فراخوان، تماس، هدر و فوتر؛ ریسپانسیو، فارسی و انگلیسی. درج کنید و با «ویرایش مستقیم» مال خودتان کنید
 - 🧩 **کاشی‌ها**: یک صفحه HTML کامل یا CSS/JS خام را بچسبانید؛ کاشی نوع کد را تشخیص می‌دهد و هر بخش را سر جایش می‌گذارد. CSS هر کاشی فقط روی خودش اثر دارد
 - 🎨 **ویرایش مستقیم** متن، لینک، تصویر، رنگ و آیکون داخل پیش‌نمایش، بدون دست زدن به کد
 - 📐 **پنل فاصله‌ها** به سبک المنتور: حاشیه خارجی و فاصله داخلی با قفل چهار طرف، واحد (px، %، em، rem، vh، vw) و مقدار جدا برای هر دستگاه؛ به‌علاوه پس‌زمینه، گردی گوشه، حداقل ارتفاع، شناسه و کلاس CSS
@@ -106,6 +117,10 @@ Kashi is free software, so anyone may study, change and share it under the GPL. 
 - 🔄 **خروجی / ورودی**: انتقال کاشی‌ها، هدر/فوترها و صفحه‌ها بین سایت‌ها با یک فایل
 - 🛡️ **آپدیت امن** مستقیم از گیت‌هاب با بررسی SHA-256؛ سرور آپدیت اختصاصی و آپدیت آفلاین با امضای دیجیتال Ed25519
 - 🌐 **حالت اینترنت ملی** برای قطعی اینترنت بین‌الملل و فونت وزیرمتن محلی
+
+### اول امتحان کنید
+
+روی **[▶ دموی زنده فارسی](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/KaroRostampour/kashi/main/playground/blueprint-fa.json)** بزنید؛ یک وردپرس آزمایشی با کاشی و یک صفحه نمونه، داخل مرورگر خودتان باز می‌شود. بدون نصب و ثبت‌نام، و با بستن صفحه پاک می‌شود.
 
 ### نصب
 
@@ -134,6 +149,8 @@ includes/class-kashi-about.php     About page, creator credit, official-build ch
 languages/{code}.json              translations (Persian source text → language)
 assets/                            icons, KR logo, Vazirmatn font (OFL)
 templates/                         full-width and canvas layouts
+assets/patterns.json               ready-made sections (Persian + English)
+playground/                        WordPress Playground demo blueprints
 ```
 
 **Translations.** UI strings are written in Persian and wrapped in `Kashi::t()` (PHP) or `T()` (editor JS). Each `languages/{code}.json` maps the Persian text to the translation; a missing entry falls back to Persian. Pull requests for new languages are welcome.
