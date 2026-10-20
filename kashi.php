@@ -3,7 +3,7 @@
  * Plugin Name:       کاشی — Kashi
  * Plugin URI:        https://github.com/KaroRostampour/kashi
  * Description:       A lightweight, code-first page builder: build pages tile by tile with your own HTML/CSS/JS and see the result instantly. No bloat, works with any theme and SEO plugin. 10 languages.
- * Version:           2.1.0
+ * Version:           2.2.0
  * Author:            KaroRostampour
  * Author URI:        https://github.com/KaroRostampour
  * License:           GPL-2.0-or-later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '2.1.0';
+	const VERSION = '2.2.0';
 
 	/* ================================================================== *
 	 * زبان‌ها (i18n)
@@ -129,6 +129,145 @@ final class Kashi {
 		return $pre . $d[ $k ] . $post;
 	}
 
+	/* ================================================================== *
+	 * رنگ‌ها و فونت سراسری (Design tokens)
+	 * یک بار در تنظیمات تعریف می‌شوند و به‌صورت متغیر CSS (‎--kashi-*‎) در همه صفحه‌ها
+	 * در دسترس‌اند؛ سکشن‌های آماده خودکار از آن‌ها استفاده می‌کنند.
+	 * ================================================================== */
+	const TOKENS = array(
+		'accent'   => '#4f46e5',
+		'accent-2' => '#06b6d4',
+		'ink'      => '#0f172a',
+		'muted'    => '#64748b',
+		'soft'     => '#f1f5f9',
+	);
+
+	public static function tokens() {
+		$t   = function_exists( 'get_option' ) ? get_option( 'kashi_tokens', array() ) : array();
+		$t   = is_array( $t ) ? $t : array();
+		$out = array();
+		foreach ( array_keys( self::TOKENS ) as $k ) {
+			if ( isset( $t[ $k ] ) && preg_match( '/^#[0-9a-f]{6}$/i', (string) $t[ $k ] ) ) {
+				$out[ $k ] = strtolower( $t[ $k ] );
+			}
+		}
+		if ( isset( $t['radius'] ) && '' !== (string) $t['radius'] && is_numeric( $t['radius'] ) ) {
+			$out['radius'] = max( 0, min( 48, (int) $t['radius'] ) );
+		}
+		if ( ! empty( $t['font'] ) ) {
+			$f = self::clean_font( $t['font'] );
+			if ( '' !== $f ) {
+				$out['font'] = $f;
+			}
+		}
+		return $out;
+	}
+
+	/** فقط نام فونت: حروف، عدد، فاصله، ویرگول، خط تیره و نقل‌قول */
+	public static function clean_font( $f ) {
+		$f = trim( preg_replace( '/[^\p{L}\p{N} ,\-\'"]/u', '', (string) $f ) );
+		if ( substr_count( $f, '"' ) % 2 || substr_count( $f, "'" ) % 2 ) {
+			$f = trim( str_replace( array( '"', "'" ), '', $f ) ); // نقل‌قول نیمه‌کاره CSS را خراب می‌کند
+		}
+		return function_exists( 'mb_substr' ) ? mb_substr( $f, 0, 120 ) : substr( $f, 0, 120 );
+	}
+
+	public static function tokens_css() {
+		$t = self::tokens();
+		if ( ! $t ) {
+			return '';
+		}
+		$css = '';
+		foreach ( array_keys( self::TOKENS ) as $k ) {
+			if ( isset( $t[ $k ] ) ) {
+				$css .= '--kashi-' . $k . ':' . $t[ $k ] . ';';
+			}
+		}
+		if ( isset( $t['radius'] ) ) {
+			$css .= '--kashi-radius:' . (int) $t['radius'] . 'px;';
+		}
+		if ( isset( $t['font'] ) ) {
+			$css .= '--kashi-font:' . $t['font'] . ';';
+		}
+		return ':root{' . $css . '}';
+	}
+
+	public static function print_tokens() {
+		$css = self::tokens_css();
+		if ( '' !== $css ) {
+			echo '<style id="kashi-tokens">' . $css . "</style>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- فقط مقادیر اعتبارسنجی‌شده
+		}
+	}
+
+	public static function save_tokens_from_post() {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce در Kashi_Updater::save_settings بررسی شده
+		if ( ! isset( $_POST['kashi_tok'] ) || ! is_array( $_POST['kashi_tok'] ) ) {
+			return;
+		}
+		$in  = wp_unslash( $_POST['kashi_tok'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- پایین‌تر کلید به کلید پاک‌سازی می‌شود
+		$out = array();
+		foreach ( array_keys( self::TOKENS ) as $k ) {
+			$v = isset( $in[ $k ] ) && is_scalar( $in[ $k ] ) ? strtolower( trim( (string) $in[ $k ] ) ) : '';
+			if ( preg_match( '/^#[0-9a-f]{6}$/', $v ) ) {
+				$out[ $k ] = $v;
+			}
+		}
+		if ( isset( $in['radius'] ) && is_scalar( $in['radius'] ) && '' !== trim( (string) $in['radius'] ) && is_numeric( $in['radius'] ) ) {
+			$out['radius'] = max( 0, min( 48, (int) $in['radius'] ) );
+		}
+		$f = isset( $in['font'] ) && is_scalar( $in['font'] ) ? self::clean_font( $in['font'] ) : '';
+		if ( '' !== $f ) {
+			$out['font'] = $f;
+		}
+		update_option( 'kashi_tokens', $out, true );
+		// phpcs:enable
+	}
+
+	public static function tokens_card() {
+		$t      = self::tokens();
+		$labels = array(
+			'accent'   => self::t( 'رنگ اصلی' ),
+			'accent-2' => self::t( 'رنگ دوم' ),
+			'ink'      => self::t( 'رنگ متن' ),
+			'muted'    => self::t( 'رنگ متن کم‌رنگ' ),
+			'soft'     => self::t( 'رنگ پس‌زمینه ملایم' ),
+		);
+		?>
+		<div class="kashi-card" id="kashi-tokens-card">
+			<h2><?php echo esc_html( self::t( 'رنگ‌ها و فونت سراسری' ) ); ?></h2>
+			<p class="desc"><?php echo esc_html( self::t( 'یک بار تعریف کنید؛ همه سکشن‌های آماده و هر کدی که از این متغیرها استفاده کند، خودکار عوض می‌شوند. خالی = مقدار پیش‌فرض.' ) ); ?></p>
+			<?php
+			foreach ( $labels as $k => $lab ) :
+				$v = isset( $t[ $k ] ) ? $t[ $k ] : '';
+				?>
+			<div class="kashi-row">
+				<label for="kashi_tok_<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $lab ); ?></label>
+				<div class="kashi-tok">
+					<input type="color" value="<?php echo esc_attr( $v ? $v : self::TOKENS[ $k ] ); ?>" aria-label="<?php echo esc_attr( $lab ); ?>" oninput="this.nextElementSibling.value=this.value">
+					<input type="text" class="ltr" id="kashi_tok_<?php echo esc_attr( $k ); ?>" name="kashi_tok[<?php echo esc_attr( $k ); ?>]" value="<?php echo esc_attr( $v ); ?>" placeholder="<?php echo esc_attr( self::TOKENS[ $k ] ); ?>" pattern="#[0-9a-fA-F]{6}" maxlength="7" oninput="if(/^#[0-9a-f]{6}$/i.test(this.value)){this.previousElementSibling.value=this.value}">
+					<button type="button" class="button-link" onclick="var i=this.previousElementSibling;i.value='';i.previousElementSibling.value=i.placeholder"><?php echo esc_html( self::t( 'پیش‌فرض' ) ); ?></button>
+					<code class="ltr">var(--kashi-<?php echo esc_html( $k ); ?>)</code>
+				</div>
+			</div>
+			<?php endforeach; ?>
+			<div class="kashi-row">
+				<label for="kashi_tok_radius"><?php echo esc_html( self::t( 'گردی گوشه‌ها' ) ); ?></label>
+				<div class="kashi-tok">
+					<input type="number" class="ltr" id="kashi_tok_radius" name="kashi_tok[radius]" min="0" max="48" step="1" value="<?php echo isset( $t['radius'] ) ? (int) $t['radius'] : ''; ?>" placeholder="18"> px
+					<code class="ltr">var(--kashi-radius)</code>
+				</div>
+			</div>
+			<div class="kashi-row">
+				<label for="kashi_tok_font"><?php echo esc_html( self::t( 'فونت' ) ); ?></label>
+				<div>
+					<div class="kashi-tok"><input type="text" class="ltr kashi-tok-font" id="kashi_tok_font" name="kashi_tok[font]" value="<?php echo esc_attr( isset( $t['font'] ) ? $t['font'] : '' ); ?>" placeholder="Vazirmatn, sans-serif" maxlength="120"> <code class="ltr">var(--kashi-font)</code></div>
+					<p class="description"><?php echo esc_html( self::t( 'خالی = فونت قالب. برای وزیرمتن، «فونت وزیرمتن محلی» را هم در پایین همین صفحه روشن کنید.' ) ); ?></p>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
 	/** «۵ دقیقه پیش» به زبان افزونه */
 	public static function ago( $t ) {
 		$d = max( 0, time() - (int) $t );
@@ -221,6 +360,7 @@ final class Kashi {
 		add_filter( 'the_content', array( __CLASS__, 'content_placeholder' ), 0 );
 		add_filter( 'the_content', array( __CLASS__, 'filter_content' ), 9999 );
 		add_action( 'wp_head', array( __CLASS__, 'head_assets' ), 20 );
+		add_action( 'wp_head', array( __CLASS__, 'print_tokens' ), 3 );
 		add_filter( 'wp_robots', array( __CLASS__, 'robots' ) );
 		add_action( 'wp_footer', array( __CLASS__, 'print_js' ), 99 );
 		add_action( 'template_redirect', array( __CLASS__, 'section_preview' ) );
@@ -1686,6 +1826,7 @@ final class Kashi {
 			'icons'     => plugins_url( 'assets/icons.json', KASHI_FILE ) . '?v=' . self::VERSION,
 			'patterns'  => plugins_url( 'assets/patterns.json', KASHI_FILE ) . '?v=' . self::VERSION,
 			'font'      => plugins_url( 'assets/fonts/vazirmatn.woff2', KASHI_FILE ),
+			'tokens'    => self::tokens_css(),
 			'i18n'      => (object) self::dict(),
 			'lang'      => self::lang(),
 			'locale'    => self::locale_tag(),
@@ -2143,7 +2284,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			<div class="nav" id="kashi-tnav" role="tablist" aria-label="<?php echo esc_attr( self::t( 'دسته‌بندی‌ها' ) ); ?>"></div>
 			<div class="grid" id="kashi-tgrid"></div>
 		</div>
-		<div class="ft"><?php self::icon( 'info' ); ?><span><?php echo esc_html( self::t( 'بعد از درج، متن‌ها، لینک‌ها و تصاویر را با «ویرایش مستقیم» عوض کنید. رنگ اصلی هر سکشن در ابتدای CSS آن (‎--a‎) قابل تغییر است.' ) ); ?></span></div>
+		<div class="ft"><?php self::icon( 'info' ); ?><span><?php echo esc_html( self::t( 'بعد از درج، متن‌ها، لینک‌ها و تصاویر را با «ویرایش مستقیم» عوض کنید. رنگ‌ها و فونت همه سکشن‌ها از «کاشی ← تنظیمات ← رنگ‌ها و فونت سراسری» یک‌جا عوض می‌شود.' ) ); ?></span></div>
 	</div>
 </div>
 <div id="kashi-toasts" role="status" aria-live="polite"></div>
@@ -2687,7 +2828,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	}
 	function tplDoc(code) {
 		return '<!DOCTYPE html><html dir="' + (T_LANG === 'fa' ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><style>@font-face{font-family:"Vazirmatn";src:url(' + cfg.font + ') format("woff2");font-weight:100 900}html,body{margin:0;overflow:hidden;background:#fff;font-family:' +
-			(T_LANG === 'fa' ? '"Vazirmatn",' : '') + 'system-ui,-apple-system,"Segoe UI",sans-serif}</style></head><body>' + code + '</body></html>';
+			(T_LANG === 'fa' ? '"Vazirmatn",' : '') + 'system-ui,-apple-system,"Segoe UI",sans-serif}' + (cfg.tokens || '') + '</style></head><body>' + code + '</body></html>';
 	}
 	function tplRender() {
 		tplNav();

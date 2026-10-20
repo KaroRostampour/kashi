@@ -3,7 +3,7 @@ Contributors: karorostampour
 Tags: page builder, code editor, sections, lightweight, seo
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,11 @@ Created by KaroRostampour — https://github.com/KaroRostampour/kashi
 <?php defined( 'ABSPATH' ) || exit;
 
 == تغییرات ==
+
+= 2.2.0 =
+* رنگ‌ها و فونت سراسری: در «کاشی ← تنظیمات» رنگ اصلی، رنگ دوم، رنگ متن، متن کم‌رنگ، پس‌زمینه ملایم، گردی گوشه‌ها و فونت را یک بار تعریف کنید؛ همه سکشن‌های آماده (و هر کدی که از var(--kashi-accent) و … استفاده کند) خودکار عوض می‌شوند. پیش‌نمایش گالری سکشن‌ها هم همین رنگ‌ها را نشان می‌دهد
+* فقط وقتی چیزی تنظیم شده باشد، یک خط CSS کوچک در head اضافه می‌شود؛ مقادیر کاملاً اعتبارسنجی می‌شوند
+* English: global design tokens (colors, radius, font) applied to all ready-made sections.
 
 = 2.1.0 =
 * سکشن‌های آماده: دکمه «افزودن بخش» حالا یک گالری با پیش‌نمایش زنده باز می‌کند؛ ۱۵ سکشن شیک و ریسپانسیو (هیرو، ویژگی‌ها، مراحل کار، دسته‌بندی، کارت محصول، آمار، نظرات، لوگوی برندها، درباره ما، سؤالات متداول با اسکیمای FAQPage، فراخوان، تماس، هدر و فوتر) به فارسی و انگلیسی، با دسته‌بندی و جستجو. «بخش خالی» هم مثل قبل هست

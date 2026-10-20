@@ -948,6 +948,9 @@ final class Kashi_Updater {
 		if ( class_exists( 'Kashi_Net' ) ) {
 			Kashi_Net::save_from_post();
 		}
+		if ( method_exists( 'Kashi', 'save_tokens_from_post' ) ) {
+			Kashi::save_tokens_from_post();
+		}
 		if ( isset( $_POST['kashi_lang'] ) ) {
 			$lg = sanitize_key( wp_unslash( $_POST['kashi_lang'] ) );
 			update_option( 'kashi_lang', ( 'auto' === $lg || isset( Kashi::LANGS[ $lg ] ) ) ? $lg : 'auto', true );
@@ -1051,6 +1054,12 @@ final class Kashi_Updater {
 				.kashi-settings .kashi-card > p.desc{margin:0 0 16px;color:#646970}
 				.kashi-settings .kashi-row{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start;padding:12px 0;border-top:1px solid #f0f0f1}
 				.kashi-settings .kashi-row label{font-weight:600;padding-top:6px}
+				.kashi-settings .kashi-tok{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+				.kashi-settings .kashi-tok input[type=color]{width:42px;height:32px;padding:2px;border:1px solid #c3c4c7;border-radius:6px;background:#fff;cursor:pointer}
+				.kashi-settings .kashi-row .kashi-tok input[type=text]{width:110px}
+				.kashi-settings .kashi-row .kashi-tok input.kashi-tok-font{width:260px}
+				.kashi-settings .kashi-tok input[type=number]{width:90px}
+				.kashi-settings .kashi-tok code{font-size:11.5px;color:#646970;background:#f6f7f7}
 				.kashi-settings .kashi-row input[type=text],.kashi-settings .kashi-row input[type=url],.kashi-settings .kashi-row textarea{width:100%;max-width:520px}
 				.kashi-settings .kashi-row .ltr{direction:ltr;text-align:left}
 				.kashi-settings .kashi-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;background:#f0f0f1}
@@ -1100,6 +1109,8 @@ final class Kashi_Updater {
 						</div>
 					</div>
 				</div>
+
+				<?php if ( method_exists( 'Kashi', 'tokens_card' ) ) { Kashi::tokens_card(); } ?>
 
 				<div class="kashi-card">
 					<h2><?php echo esc_html( Kashi::t( 'آپدیت خودکار' ) ); ?></h2>

@@ -5,7 +5,7 @@
 **The code-first page builder for WordPress.**
 Build every page tile by tile with your own HTML, CSS and JavaScript — written by hand or by AI — and see it live inside your real theme.
 
-![Version](https://img.shields.io/badge/version-2.1.0-6c5ce7)
+![Version](https://img.shields.io/badge/version-2.2.0-6c5ce7)
 ![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4)
 ![License](https://img.shields.io/badge/license-GPL--2.0--or--later-2ea44f)
@@ -38,6 +38,7 @@ It is built for designers who already write code, or who let ChatGPT, Claude or 
 |---|---|
 | ⚡ **Live editor** | Full-screen editor with a real-theme preview at true device widths (1440 / 1280 / 768 / 390). |
 | ✨ **15 ready-made sections** | Hero, features, steps, categories, product cards, stats, testimonials, brand logos, about, FAQ (with schema), CTA, contact, header and footer — responsive, accessible, Persian and English. Insert one, then make it yours with Direct edit. |
+| 🎨 **Global colors & font** | Set your brand colors, corner radius and font once in *Kashi → Settings*; every ready-made section (and any code using `var(--kashi-accent)` …) follows. |
 | 🧩 **Tiles** | Paste a whole HTML document or bare CSS/JS — Kashi detects the type and puts every part in the right place. Each tile's CSS is scoped to itself. |
 | 🎨 **Direct edit** | Click any text, link, image, color or icon in the preview and change it without touching code. |
 | 📐 **Spacing panel** | Elementor-style margin & padding with linked sides, units (px, %, em, rem, vh, vw) and separate values per device; background, corner radius, min-height, CSS ID and class. |
@@ -104,6 +105,7 @@ Kashi is free software, so anyone may study, change and share it under the GPL. 
 
 - ⚡ **ویرایشگر زنده** تمام‌صفحه با پیش‌نمایش داخل قالب واقعی سایت، با عرض واقعی هر دستگاه (۱۴۴۰ / ۱۲۸۰ / ۷۶۸ / ۳۹۰)
 - ✨ **۱۵ سکشن آماده**: هیرو، ویژگی‌ها، مراحل کار، دسته‌بندی‌ها، کارت محصول، آمار، نظرات مشتریان، لوگوی برندها، درباره ما، سؤالات متداول (با اسکیما)، فراخوان، تماس، هدر و فوتر؛ ریسپانسیو، فارسی و انگلیسی. درج کنید و با «ویرایش مستقیم» مال خودتان کنید
+- 🎨 **رنگ‌ها و فونت سراسری**: رنگ برند، گردی گوشه‌ها و فونت را یک بار در «کاشی ← تنظیمات» بگذارید؛ همه سکشن‌های آماده (و هر کدی که از `var(--kashi-accent)` و … استفاده کند) خودکار عوض می‌شوند
 - 🧩 **کاشی‌ها**: یک صفحه HTML کامل یا CSS/JS خام را بچسبانید؛ کاشی نوع کد را تشخیص می‌دهد و هر بخش را سر جایش می‌گذارد. CSS هر کاشی فقط روی خودش اثر دارد
 - 🎨 **ویرایش مستقیم** متن، لینک، تصویر، رنگ و آیکون داخل پیش‌نمایش، بدون دست زدن به کد
 - 📐 **پنل فاصله‌ها** به سبک المنتور: حاشیه خارجی و فاصله داخلی با قفل چهار طرف، واحد (px، %، em، rem، vh، vw) و مقدار جدا برای هر دستگاه؛ به‌علاوه پس‌زمینه، گردی گوشه، حداقل ارتفاع، شناسه و کلاس CSS
