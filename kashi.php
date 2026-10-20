@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.6.0
+ * Version:           1.6.1
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.6.0';
+	const VERSION = '1.6.1';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -86,6 +86,7 @@ final class Kashi {
 		self::load_php_snippets();
 		add_action( 'admin_init', array( __CLASS__, 'guard_php_folders' ) );
 		add_action( 'kashi_schedule_tick', array( __CLASS__, 'schedule_tick' ), 10, 2 );
+		add_action( 'admin_init', array( __CLASS__, 'after_update' ) );
 
 		// سایت
 		add_shortcode( 'kashi', array( __CLASS__, 'shortcode' ) );
@@ -103,6 +104,7 @@ final class Kashi {
 		// هدر و فوتر با کاشی
 		add_action( 'template_redirect', array( __CLASS__, 'live_headers' ), 0 );
 		add_action( 'template_redirect', array( __CLASS__, 'hf_start' ), 1 );
+		add_action( 'template_redirect', array( __CLASS__, 'schedule_cache_guard' ), 2 );
 		add_action( 'wp_head', array( __CLASS__, 'hf_prepare' ), 1 );
 		add_action( 'wp_footer', array( __CLASS__, 'hf_print_scripts' ), 100 );
 		add_action( 'transition_post_status', array( __CLASS__, 'hf_status_changed' ), 10, 3 );
@@ -561,6 +563,78 @@ final class Kashi {
 		return ( ! $from || $now >= $from ) && ( ! $until || $now < $until );
 	}
 
+	/** نزدیک‌ترین زمان آینده‌ای که ظاهر این بخش‌ها عوض می‌شود (شامل کاشی‌های لینک‌شده) */
+	private static function next_change( $compiled, $now = null, $depth = 0 ) {
+		$now  = null === $now ? time() : $now;
+		$next = 0;
+		foreach ( (array) $compiled as $b ) {
+			if ( ! is_array( $b ) ) {
+				continue;
+			}
+			foreach ( array( 'from', 'until' ) as $k ) {
+				$t = isset( $b[ $k ] ) ? (int) $b[ $k ] : 0;
+				if ( $t > $now && ( ! $next || $t < $next ) ) {
+					$next = $t;
+				}
+			}
+			if ( $depth < 3 && ! empty( $b['c']['html'] ) && preg_match_all( '#\[(?:kashi|lsec)\s+id=["\']?(\d+)#', $b['c']['html'], $mm ) ) {
+				foreach ( array_unique( $mm[1] ) as $sid ) {
+					$t = self::next_change( self::saved_compiled( (int) $sid ), $now, $depth + 1 );
+					if ( $t && ( ! $next || $t < $next ) ) {
+						$next = $t;
+					}
+				}
+			}
+		}
+		return $next;
+	}
+
+	/** به کش LiteSpeed می‌گوییم نسخه کش این صفحه دقیقاً تا زمان تغییر بعدی معتبر است */
+	private static $cache_until = 0;
+	private static function cache_expire_at( $t ) {
+		if ( ! $t || ( self::$cache_until && self::$cache_until <= $t ) ) {
+			return;
+		}
+		self::$cache_until = $t;
+		$ttl               = max( 30, $t - time() + 5 );
+		do_action( 'litespeed_control_set_ttl', $ttl ); // LiteSpeed Cache: TTL همین صفحه
+	}
+
+	/**
+	 * ریشه مشکل کش: نسخه کش‌شده صفحه بدون اجرای PHP تحویل داده می‌شود، پس نه کرون اجرا
+	 * می‌شود نه بخش سر وقت ظاهر می‌شود. پیش از ساخت صفحه، عمر کش را تا زمان تغییر بعدی
+	 * محدود می‌کنیم: LiteSpeed با TTL اختصاصی، CDN (ابرآروان/کلودفلر) و مرورگر با
+	 * Cache-Control، و کش‌های دیگر با DONOTCACHEPAGE در ۱۲ ساعت آخر.
+	 */
+	public static function schedule_cache_guard() {
+		if ( is_admin() || is_user_logged_in() || ! is_singular() ) {
+			return;
+		}
+		$now  = time();
+		$next = self::next_change( self::saved_compiled( (int) get_queried_object_id() ), $now );
+		$idx  = get_option( 'kashi_hf_index', array() );
+		foreach ( array( 'header', 'footer' ) as $loc ) {
+			foreach ( ( isset( $idx[ $loc ] ) && is_array( $idx[ $loc ] ) ) ? array_keys( $idx[ $loc ] ) : array() as $hid ) {
+				$t = self::next_change( self::saved_compiled( (int) $hid ), $now );
+				if ( $t && ( ! $next || $t < $next ) ) {
+					$next = $t;
+				}
+			}
+		}
+		if ( ! $next ) {
+			return;
+		}
+		self::cache_expire_at( $next );
+		$ttl = max( 30, $next - $now + 5 );
+		if ( ! headers_sent() ) {
+			header( 'Cache-Control: public, max-age=' . min( $ttl, 600 ) . ', s-maxage=' . $ttl );
+			header( 'CDN-Cache-Control: max-age=' . $ttl );
+		}
+		if ( ! defined( 'LSCWP_V' ) && $ttl < 12 * HOUR_IN_SECONDS && ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // WP Rocket / W3TC / Super Cache / Fastest Cache
+		}
+	}
+
 	/** برای هر زمان شروع/پایان آینده یک رویداد کرون: محتوای سئو به‌روز و کش پاک می‌شود */
 	private static function schedule_ticks( $id, $blocks ) {
 		$now = time();
@@ -569,6 +643,10 @@ final class Kashi {
 				$t = isset( $b[ $k ] ) ? (int) $b[ $k ] : 0;
 				if ( $t > $now && ! wp_next_scheduled( 'kashi_schedule_tick', array( (int) $id, $t ) ) ) {
 					wp_schedule_single_event( $t + 5, 'kashi_schedule_tick', array( (int) $id, $t ) );
+				}
+				$pre = $t - 12 * HOUR_IN_SECONDS; // از این لحظه صفحه در کش‌های غیر LiteSpeed ذخیره نمی‌شود؛ نسخه قبلی پاک شود
+				if ( $pre > $now && ! wp_next_scheduled( 'kashi_schedule_tick', array( (int) $id, $pre ) ) ) {
+					wp_schedule_single_event( $pre, 'kashi_schedule_tick', array( (int) $id, $pre ) );
 				}
 			}
 		}
@@ -592,6 +670,14 @@ final class Kashi {
 			self::hf_rebuild_index();
 		}
 		self::purge_caches( $id );
+	}
+
+	/** بعد از نصب نسخه جدید یک بار کش پاک شود تا صفحه‌های کش‌شده قدیمی قانون جدید را بگیرند */
+	public static function after_update() {
+		if ( get_option( 'kashi_version' ) !== self::VERSION && current_user_can( 'manage_options' ) ) {
+			update_option( 'kashi_version', self::VERSION, true );
+			self::purge_caches();
+		}
 	}
 
 	/** پاک کردن کش صفحه در افزونه‌های رایج کش */
@@ -3624,8 +3710,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			if ( ! is_array( $b ) || empty( $b['uid'] ) ) {
 				continue;
 			}
-			if ( empty( $b['always'] ) && ! self::block_live( $b ) ) {
-				continue; // هنوز زمان انتشارش نرسیده یا زمان نمایشش تمام شده
+			if ( empty( $b['always'] ) ) {
+				self::cache_expire_at( self::next_change( array( array_diff_key( $b, array( 'c' => 1 ) ) ) ) );
+				if ( ! self::block_live( $b ) ) {
+					continue; // هنوز زمان انتشارش نرسیده یا زمان نمایشش تمام شده
+				}
 			}
 			$uid = preg_replace( '/[^a-z0-9]/', '', (string) $b['uid'] );
 			$c   = wp_parse_args( isset( $b['c'] ) ? (array) $b['c'] : array(), array( 'css' => '', 'links' => '', 'html' => '', 'scripts' => '' ) );
