@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       کاشی — Kashi
  * Description:       صفحه‌ساز کدمحور و سبک: صفحه را کاشی‌به‌کاشی با کد خودتان بسازید و همان لحظه نتیجه را ببینید. بدون بار اضافه، سازگار با هر قالب و افزونه سئو.
- * Version:           1.5.1
+ * Version:           1.6.0
  * Author:            Karorostampoor@gmail.com
  * Author URI:        mailto:Karorostampoor@gmail.com
  * License:           GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '1.5.1';
+	const VERSION = '1.6.0';
 
 	private static $printed_css  = array();
 	private static $footer_js    = array();
@@ -85,6 +85,7 @@ final class Kashi {
 		// فایل‌های PHP اختصاصی (شورت‌کدهای خودتان) از پوشه wp-content/kashi-php
 		self::load_php_snippets();
 		add_action( 'admin_init', array( __CLASS__, 'guard_php_folders' ) );
+		add_action( 'kashi_schedule_tick', array( __CLASS__, 'schedule_tick' ), 10, 2 );
 
 		// سایت
 		add_shortcode( 'kashi', array( __CLASS__, 'shortcode' ) );
@@ -342,7 +343,7 @@ final class Kashi {
 	 * ------------------------------------------------------------------ */
 	private static function print_icon_sprite() {
 		echo '<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">'
-			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-shapes" viewBox="0 0 24 24"><circle cx="7" cy="7" r="4"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><path d="M7 13.5 11 20H3z"/><circle cx="17" cy="17" r="4"/></symbol><symbol id="lsi-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="lsi-laptop" viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9H4z"/><path d="M2 19h20l-2-4H4z"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
+			. '<symbol id="lsi-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lsi-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="lsi-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol><symbol id="lsi-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol><symbol id="lsi-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol><symbol id="lsi-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol><symbol id="lsi-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="lsi-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol><symbol id="lsi-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol><symbol id="lsi-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol><symbol id="lsi-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lsi-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lsi-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lsi-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lsi-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M15 10H9"/></symbol><symbol id="lsi-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol><symbol id="lsi-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="lsi-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="lsi-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lsi-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="lsi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="lsi-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lsi-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol><symbol id="lsi-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="lsi-width" viewBox="0 0 24 24"><path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/></symbol><symbol id="lsi-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol><symbol id="lsi-layout-full" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M3 16h18"/></symbol><symbol id="lsi-layout-canvas" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/></symbol><symbol id="lsi-panel-top" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol><symbol id="lsi-panel-bottom" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></symbol><symbol id="lsi-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></symbol><symbol id="lsi-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol><symbol id="lsi-layout-default" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 8h18"/><path d="M15 8v13"/></symbol><symbol id="lsi-shapes" viewBox="0 0 24 24"><circle cx="7" cy="7" r="4"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><path d="M7 13.5 11 20H3z"/><circle cx="17" cy="17" r="4"/></symbol><symbol id="lsi-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="lsi-laptop" viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9H4z"/><path d="M2 19h20l-2-4H4z"/></symbol><symbol id="lsi-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="lsi-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>'
 			. '</svg>';
 	}
 
@@ -418,6 +419,8 @@ final class Kashi {
 				'code' => isset( $b['code'] ) ? (string) $b['code'] : '',
 				'full' => ! empty( $b['full'] ),
 				'dev'  => self::norm_dev( isset( $b['dev'] ) ? $b['dev'] : array() ),
+				'from' => isset( $b['from'] ) ? max( 0, (int) $b['from'] ) : 0,   // زمان شروع نمایش (UTC، ثانیه)
+				'until' => isset( $b['until'] ) ? max( 0, (int) $b['until'] ) : 0, // زمان پایان نمایش
 			);
 		}
 		return $out;
@@ -548,6 +551,77 @@ final class Kashi {
 		return $c;
 	}
 
+	/* ---------- زمان‌بندی انتشار هر بخش ---------- */
+
+	/** آیا این بخش همین الان باید دیده شود؟ */
+	private static function block_live( $b, $now = null ) {
+		$now   = null === $now ? time() : $now;
+		$from  = isset( $b['from'] ) ? (int) $b['from'] : 0;
+		$until = isset( $b['until'] ) ? (int) $b['until'] : 0;
+		return ( ! $from || $now >= $from ) && ( ! $until || $now < $until );
+	}
+
+	/** برای هر زمان شروع/پایان آینده یک رویداد کرون: محتوای سئو به‌روز و کش پاک می‌شود */
+	private static function schedule_ticks( $id, $blocks ) {
+		$now = time();
+		foreach ( (array) $blocks as $b ) {
+			foreach ( array( 'from', 'until' ) as $k ) {
+				$t = isset( $b[ $k ] ) ? (int) $b[ $k ] : 0;
+				if ( $t > $now && ! wp_next_scheduled( 'kashi_schedule_tick', array( (int) $id, $t ) ) ) {
+					wp_schedule_single_event( $t + 5, 'kashi_schedule_tick', array( (int) $id, $t ) );
+				}
+			}
+		}
+	}
+
+	public static function schedule_tick( $id, $t = 0 ) {
+		$id   = (int) $id;
+		$post = get_post( $id );
+		if ( ! $post ) {
+			return;
+		}
+		if ( self::CPT !== $post->post_type ) {
+			$c = self::saved_compiled( $id );
+			if ( $c ) {
+				$seo = self::seo_html( $c );
+				if ( $seo !== $post->post_content ) {
+					wp_update_post( wp_slash( array( 'ID' => $id, 'post_content' => $seo ) ) );
+				}
+			}
+		} else {
+			self::hf_rebuild_index();
+		}
+		self::purge_caches( $id );
+	}
+
+	/** پاک کردن کش صفحه در افزونه‌های رایج کش */
+	public static function purge_caches( $id = 0 ) {
+		if ( $id ) {
+			clean_post_cache( $id );
+		}
+		do_action( 'litespeed_purge_all' );
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+		if ( function_exists( 'w3tc_flush_all' ) ) {
+			w3tc_flush_all();
+		}
+		if ( function_exists( 'wp_cache_clear_cache' ) ) {
+			wp_cache_clear_cache();
+		}
+		if ( function_exists( 'wpfc_clear_all_cache' ) ) {
+			wpfc_clear_all_cache( true );
+		}
+		if ( function_exists( 'sg_cachepress_purge_cache' ) ) {
+			sg_cachepress_purge_cache();
+		}
+		if ( class_exists( 'autoptimizeCache' ) && method_exists( 'autoptimizeCache', 'clearall' ) ) {
+			autoptimizeCache::clearall();
+		}
+		do_action( 'breeze_clear_all_cache' );
+		do_action( 'kashi_purge_cache', $id );
+	}
+
 	private static function compile_blocks( $blocks, $scope_on, $trusted ) {
 		$out     = array();
 		$h1_seen = false;
@@ -569,6 +643,8 @@ final class Kashi {
 				'uid'  => $b['uid'],
 				'full' => (bool) $b['full'],
 				'dev'  => $dev,
+				'from' => isset( $b['from'] ) ? (int) $b['from'] : 0,
+				'until' => isset( $b['until'] ) ? (int) $b['until'] : 0,
 				'c'    => $c,
 			);
 		}
@@ -618,8 +694,8 @@ final class Kashi {
 	private static function seo_html( $compiled, $depth = 0 ) {
 		$out = array();
 		foreach ( (array) $compiled as $b ) {
-			if ( ! is_array( $b ) || empty( $b['c']['html'] ) ) {
-				continue;
+			if ( ! is_array( $b ) || empty( $b['c']['html'] ) || ! self::block_live( $b ) ) {
+				continue; // بخش زمان‌بندی‌شده تا زمان انتشار در محتوای عمومی نیست
 			}
 			$h = preg_replace_callback(
 				'#\[(?:kashi|lsec)\s+id=["\']?(\d+)["\']?\s*\]#',
@@ -837,6 +913,8 @@ final class Kashi {
 							'code' => $b['code'],
 							'full' => (bool) $b['full'],
 							'dev'  => isset( $b['dev'] ) ? $b['dev'] : array(),
+							'from' => isset( $b['from'] ) ? (int) $b['from'] : 0,
+							'until' => isset( $b['until'] ) ? (int) $b['until'] : 0,
 						);
 					},
 					$blocks
@@ -1399,6 +1477,20 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .kashi-item .dv .ic{width:13px;height:13px}
 .kashi-item .dv:hover{color:var(--text)}
 .kashi-item .dv.on{background:var(--accent-soft);border-color:var(--accent-line);color:#fff}
+.kashi-item .sch{display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 6px;border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--dim);cursor:pointer;font-size:11px}
+.kashi-item .sch .ic{width:13px;height:13px}
+.kashi-item .sch:hover{color:var(--text)}
+.kashi-item .sch.wait{background:rgba(240,177,60,.14);border-color:rgba(240,177,60,.5);color:#f6c768}
+.kashi-item .sch.live{background:rgba(52,201,138,.12);border-color:rgba(52,201,138,.45);color:var(--ok)}
+.kashi-item .sch.ended{background:rgba(240,85,92,.1);border-color:rgba(240,85,92,.4);color:#ff9ea2}
+.kashi-dvpop.kashi-schpop{width:370px}
+.kashi-schpop .jp{display:flex;gap:4px;margin:2px 0 8px;direction:rtl}
+.kashi-schpop .jp.off{opacity:.35;pointer-events:none}
+.kashi-schpop .jp select,.kashi-schpop .jp input{height:32px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--text);font:inherit;font-size:12.5px;padding:0 6px}
+.kashi-schpop .jp select{flex:1 1 auto;min-width:0}
+.kashi-schpop .jp select[data-f=m]{flex:2 1 auto}
+.kashi-schpop .jp input{direction:ltr;flex:0 0 104px;width:104px}
+.kashi-schpop .schmsg{margin-top:6px;font-size:12px;color:var(--ok)}.kashi-schpop .schmsg.err{color:var(--err)}
 .kashi-dvpop{position:fixed;z-index:80;width:270px;direction:rtl;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:12px;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)}
 .kashi-dvpop>b{display:block;font-size:13px;margin:0 2px 8px}
 .kashi-dvpop .dvr{display:flex;justify-content:space-between;width:100%;height:auto;padding:7px 4px;color:var(--text);white-space:normal}
@@ -1709,7 +1801,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	/* ---------- بخش‌ها ---------- */
 	function makeBlock(b) {
 		b = b || {};
-		var o = { uid: b.uid || newUid(), name: b.name || ('بخش ' + (blocks.length + 1)), full: !!b.full, dev: Array.isArray(b.dev) ? b.dev.slice() : [], code: b.code || '' };
+		var o = { uid: b.uid || newUid(), name: b.name || ('بخش ' + (blocks.length + 1)), full: !!b.full, dev: Array.isArray(b.dev) ? b.dev.slice() : [], from: +b.from || 0, until: +b.until || 0, code: b.code || '' };
 		if (cm && CM) { o.doc = CM.Doc(o.code, mode); }
 		return o;
 	}
@@ -1723,7 +1815,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	function codeOf(b) { return b.doc ? b.doc.getValue() : b.code; }
 	function getBlocks() {
 		syncTa();
-		return blocks.map(function (b) { return { uid: b.uid, name: b.name, full: b.full, dev: b.dev || [], code: codeOf(b) }; });
+		return blocks.map(function (b) { return { uid: b.uid, name: b.name, full: b.full, dev: b.dev || [], from: b.from || 0, until: b.until || 0, code: codeOf(b) }; });
 	}
 
 	function select(i, scrollPreview) {
@@ -1832,6 +1924,92 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	}
 	document.addEventListener('click', function () { if (dvPop) { dvPop.remove(); dvPop = null; } });
 
+	/* ---------- زمان‌بندی انتشار (تاریخ شمسی، ساعت ایران) ---------- */
+	function jdiv(a,b){return ~~(a/b)} function jmod(a,b){return a-~~(a/b)*b}
+	var BR=[-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
+	function jalCal(jy){var gy=jy+621,leapJ=-14,jp=BR[0],jm,jump,leap,leapG,march,n,i;for(i=1;i<BR.length;i++){jm=BR[i];jump=jm-jp;if(jy<jm)break;leapJ+=jdiv(jump,33)*8+jdiv(jmod(jump,33),4);jp=jm}n=jy-jp;leapJ+=jdiv(n,33)*8+jdiv(jmod(n,33)+3,4);if(jmod(jump,33)===4&&jump-n===4)leapJ+=1;leapG=jdiv(gy,4)-jdiv((jdiv(gy,100)+1)*3,4)-150;march=20+leapJ-leapG;if(jump-n<6)n=n-jump+jdiv(jump+4,33)*33;leap=jmod(jmod(n+1,33)-1,4);if(leap===-1)leap=4;return{leap:leap,gy:gy,march:march}}
+	function g2d(gy,gm,gd){var d=jdiv((gy+jdiv(gm-8,6)+100100)*1461,4)+jdiv(153*jmod(gm+9,12)+2,5)+gd-34840408;return d-jdiv(jdiv(gy+100100+jdiv(gm-8,6),100)*3,4)+752}
+	function d2g(jdn){var j=4*jdn+139361631;j=j+jdiv(jdiv(4*jdn+183187720,146097)*3,4)*4-3908;var i=jdiv(jmod(j,1461),4)*5+308,gd=jdiv(jmod(i,153),5)+1,gm=jmod(jdiv(i,153),12)+1,gy=jdiv(j,1461)-100100+jdiv(8-gm,6);return[gy,gm,gd]}
+	function j2g(jy,jm,jd){var r=jalCal(jy);return d2g(g2d(r.gy,3,r.march)+(jm-1)*31-jdiv(jm,7)*(jm-7)+jd-1)}
+	function g2j(gy,gm,gd){var jdn=g2d(gy,gm,gd),jy=gy-621,r=jalCal(jy),k=jdn-g2d(gy,3,r.march),jm,jd;if(k>=0){if(k<=185){return[jy,1+jdiv(k,31),jmod(k,31)+1]}k-=186}else{jy-=1;k+=179;if(r.leap===1)k+=1}return[jy,7+jdiv(k,30),jmod(k,30)+1]}
+	function jLen(jy,jm){return jm<=6?31:jm<=11?30:(jalCal(jy).leap===0?30:29)}
+	var TEHRAN = 3.5 * 3600 * 1000; // ایران از ۱۴۰۱ ساعت تابستانی ندارد: همیشه UTC+03:30
+	var J_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+	function faNum(x) { return String(x).replace(/\d/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'[d]; }); }
+	function pad2(n) { return (n < 10 ? '0' : '') + n; }
+	function tsToJ(ts) { // ثانیه UTC ← تاریخ/ساعت تهران
+		var d = new Date(ts * 1000 + TEHRAN), j = g2j(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+		return { y: j[0], m: j[1], d: j[2], h: d.getUTCHours(), i: d.getUTCMinutes() };
+	}
+	function jToTs(o) {
+		var g = j2g(o.y, o.m, o.d);
+		return Math.round((Date.UTC(g[0], g[1] - 1, g[2], o.h, o.i) - TEHRAN) / 1000);
+	}
+	function jText(ts) { var o = tsToJ(ts); return faNum(o.d) + ' ' + J_MONTHS[o.m - 1] + ' ' + faNum(o.y) + '، ساعت ' + faNum(pad2(o.h) + ':' + pad2(o.i)); }
+	function schState(b) {
+		var now = Date.now() / 1000;
+		if (b.until && now >= b.until) { return 'ended'; }
+		if (b.from && now < b.from) { return 'wait'; }
+		return (b.from || b.until) ? 'live' : '';
+	}
+	function schChip(btn, b) {
+		var st = schState(b);
+		btn.className = 'sch' + (st ? ' ' + st : '');
+		btn.innerHTML = ic('clock') + (st === 'wait' ? '<span>' + faNum((function (o) { return o.d + '/' + o.m; })(tsToJ(b.from))) + '</span>' : '');
+		btn.title = st === 'wait' ? 'منتشر می‌شود: ' + jText(b.from) + (b.until ? ' — تا ' + jText(b.until) : '')
+			: st === 'ended' ? 'زمان نمایش تمام شده (' + jText(b.until) + ')؛ در سایت دیده نمی‌شود'
+			: st === 'live' ? 'در حال نمایش' + (b.until ? ' تا ' + jText(b.until) : '')
+			: 'زمان‌بندی انتشار (همیشه نمایش داده می‌شود)';
+		btn.setAttribute('aria-label', btn.title);
+	}
+	function jPicker(name, ts) {
+		var o = tsToJ(ts), y0 = tsToJ(Date.now() / 1000).y, h = '<div class="jp" data-p="' + name + '">';
+		h += '<select data-f="d">' + Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === o.d ? ' selected' : '') + '>' + faNum(i + 1) + '</option>'; }).join('') + '</select>';
+		h += '<select data-f="m">' + J_MONTHS.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === o.m ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select>';
+		h += '<select data-f="y">' + [y0 - 1, y0, y0 + 1, y0 + 2].map(function (y) { return '<option value="' + y + '"' + (y === o.y ? ' selected' : '') + '>' + faNum(y) + '</option>'; }).join('') + '</select>';
+		h += '<input type="time" data-f="t" value="' + pad2(o.h) + ':' + pad2(o.i) + '"></div>';
+		return h;
+	}
+	function jRead(box) {
+		var g = function (f) { return box.querySelector('[data-f=' + f + ']'); }, t = (g('t').value || '00:00').split(':');
+		var o = { y: +g('y').value, m: +g('m').value, d: +g('d').value, h: +t[0] || 0, i: +t[1] || 0 };
+		o.d = Math.min(o.d, jLen(o.y, o.m));
+		return jToTs(o);
+	}
+	function schPop(btn, b) {
+		if (dvPop) { var was = dvPop.owner === btn; dvPop.remove(); dvPop = null; if (was) { return; } }
+		var now = Date.now() / 1000, def = (function () { var o = tsToJ(now + 86400); o.h = 9; o.i = 0; return jToTs(o); })();
+		dvPop = document.createElement('div');
+		dvPop.className = 'kashi-dvpop kashi-schpop';
+		dvPop.owner = btn;
+		dvPop.innerHTML = '<b>زمان‌بندی انتشار این بخش</b>' +
+			'<label class="sw dvr"><span class="dvl">' + ic('clock') + '<span><b>انتشار در زمان مشخص</b><small>تا آن زمان در سایت دیده نمی‌شود</small></span></span><input type="checkbox" data-s="from"' + (b.from ? ' checked' : '') + '><i></i></label>' +
+			jPicker('from', b.from || def) +
+			'<label class="sw dvr"><span class="dvl">' + ic('x-circle') + '<span><b>پایان نمایش</b><small>اختیاری؛ مثلاً پایان جشنواره</small></span></span><input type="checkbox" data-s="until"' + (b.until ? ' checked' : '') + '><i></i></label>' +
+			jPicker('until', b.until || (b.from || def) + 7 * 86400) +
+			'<div class="hint">تاریخ شمسی و به وقت تهران. بعد از «ذخیره»، بخش سر وقت خودش منتشر می‌شود؛ لازم نیست دوباره کاری کنید. در ویرایشگر همیشه دیده می‌شود.</div><div class="schmsg"></div>';
+		document.body.appendChild(dvPop);
+		var r = btn.getBoundingClientRect();
+		dvPop.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - dvPop.offsetHeight - 8)) + 'px';
+		dvPop.style.left = Math.max(8, r.left) + 'px';
+		dvPop.addEventListener('click', function (e) { e.stopPropagation(); });
+		function sync() {
+			['from', 'until'].forEach(function (k) {
+				var on = dvPop.querySelector('input[data-s=' + k + ']').checked, box = dvPop.querySelector('.jp[data-p=' + k + ']');
+				box.classList.toggle('off', !on);
+				b[k] = on ? jRead(box) : 0;
+			});
+			var msg = dvPop.querySelector('.schmsg');
+			if (b.from && b.until && b.until <= b.from) { msg.textContent = 'پایان نمایش باید بعد از زمان انتشار باشد.'; msg.className = 'schmsg err'; }
+			else if (b.from) { msg.textContent = (b.from <= Date.now() / 1000 ? 'این زمان گذشته؛ بخش همین الان دیده می‌شود.' : 'منتشر می‌شود: ' + jText(b.from)); msg.className = 'schmsg'; }
+			else { msg.textContent = ''; }
+			schChip(btn, b);
+			markDirty();
+		}
+		dvPop.querySelectorAll('input,select').forEach(function (x) { x.addEventListener('change', sync); });
+		['from', 'until'].forEach(function (k) { dvPop.querySelector('.jp[data-p=' + k + ']').classList.toggle('off', !b[k]); });
+	}
+
 	function renderList() {
 		list.innerHTML = '';
 		blocks.forEach(function (b, i) {
@@ -1840,6 +2018,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			el.innerHTML = '<span class="n"></span><a class="lnk" target="_blank" style="display:none" title="لینک‌شده به کتابخانه — برای ویرایش اصل آن کلیک کنید">' + ic('link') + '</a><input class="nm" type="text" placeholder="نام بخش">' +
 				'<label class="fw" title="کل عرض صفحه"><input type="checkbox"><span>' + ic('width') + 'تمام‌عرض</span></label>' +
 				'<button type="button" class="dv" title="نمایش در دستگاه‌ها"></button>' +
+				'<button type="button" class="sch" title="زمان‌بندی انتشار"></button>' +
 				'<span class="acts"><button type="button" data-a="up" title="بالا">' + ic('up') + '</button><button type="button" data-a="down" title="پایین">' + ic('down') + '</button>' +
 				'<button type="button" data-a="dup" title="کپی">' + ic('copy') + '</button><button type="button" data-a="lib" title="ذخیره در کتابخانه">' + ic('bookmark') + '</button><button type="button" data-a="del" title="حذف">' + ic('trash') + '</button></span>';
 			el.querySelector('.n').textContent = i + 1;
@@ -1850,6 +2029,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			var dvb = el.querySelector('.dv');
 			devChip(dvb, b);
 			dvb.addEventListener('click', function (e) { e.stopPropagation(); devPop(dvb, b); });
+			var scb = el.querySelector('.sch');
+			schChip(scb, b);
+			scb.addEventListener('click', function (e) { e.stopPropagation(); schPop(scb, b); });
 			var fw = el.querySelector('.fw input');
 			fw.checked = b.full;
 			fw.addEventListener('change', function () { b.full = fw.checked; changed(); });
@@ -1876,7 +2058,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		} else if (a === 'down' && i < blocks.length - 1) {
 			blocks.splice(i, 1); blocks.splice(i + 1, 0, b); renderList();
 		} else if (a === 'dup') {
-			var copy = makeBlock({ name: b.name + ' (کپی)', code: codeOf(b), full: b.full, dev: b.dev });
+			var copy = makeBlock({ name: b.name + ' (کپی)', code: codeOf(b), full: b.full, dev: b.dev, from: b.from, until: b.until });
 			blocks.splice(i + 1, 0, copy); renderList(); select(i + 1, false);
 		} else if (a === 'del') {
 			if (!confirm('بخش «' + (b.name || (i + 1)) + '» حذف شود؟')) { return; }
@@ -3024,6 +3206,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		if ( self::CPT === $post->post_type ) {
 			self::hf_rebuild_index();
 		}
+		self::schedule_ticks( $id, self::get_blocks( $id ) );
+		if ( array_filter( wp_list_pluck( self::get_blocks( $id ), 'from' ) ) || array_filter( wp_list_pluck( self::get_blocks( $id ), 'until' ) ) ) {
+			self::purge_caches( $id );
+		}
 
 		wp_send_json_success( array( 'revs' => self::revs_meta( $id ) ) );
 	}
@@ -3386,8 +3572,12 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$blocks = self::blocks_from_json( wp_unslash( $_POST['kashi_live_blocks'] ) );
 
-		self::$live_cache[ $id ] = self::compile_blocks( $blocks, ! empty( $_POST['kashi_live_scope'] ), current_user_can( 'unfiltered_html' ) );
-		return self::$live_cache[ $id ];
+		$c = self::compile_blocks( $blocks, ! empty( $_POST['kashi_live_scope'] ), current_user_can( 'unfiltered_html' ) );
+		foreach ( $c as $k => $b ) {
+			$c[ $k ]['always'] = true; // در ویرایشگر بخش‌های زمان‌بندی‌شده هم دیده می‌شوند
+		}
+		self::$live_cache[ $id ] = $c;
+		return $c;
 	}
 
 	/** کامپایل ذخیره‌شده (با سازگاری نسخه قبل) */
@@ -3433,6 +3623,9 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		foreach ( (array) $compiled as $b ) {
 			if ( ! is_array( $b ) || empty( $b['uid'] ) ) {
 				continue;
+			}
+			if ( empty( $b['always'] ) && ! self::block_live( $b ) ) {
+				continue; // هنوز زمان انتشارش نرسیده یا زمان نمایشش تمام شده
 			}
 			$uid = preg_replace( '/[^a-z0-9]/', '', (string) $b['uid'] );
 			$c   = wp_parse_args( isset( $b['c'] ) ? (array) $b['c'] : array(), array( 'css' => '', 'links' => '', 'html' => '', 'scripts' => '' ) );
