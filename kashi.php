@@ -3,7 +3,7 @@
  * Plugin Name:       کاشی — Kashi
  * Plugin URI:        https://github.com/KaroRostampour/kashi
  * Description:       A lightweight, code-first page builder: build pages tile by tile with your own HTML/CSS/JS and see the result instantly. No bloat, works with any theme and SEO plugin. 10 languages.
- * Version:           2.2.0
+ * Version:           2.2.1
  * Author:            KaroRostampour
  * Author URI:        https://github.com/KaroRostampour
  * License:           GPL-2.0-or-later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '2.2.0';
+	const VERSION = '2.2.1';
 
 	/* ================================================================== *
 	 * زبان‌ها (i18n)
@@ -1054,7 +1054,38 @@ final class Kashi {
 	public static function after_update() {
 		if ( get_option( 'kashi_version' ) !== self::VERSION && current_user_can( 'manage_options' ) ) {
 			update_option( 'kashi_version', self::VERSION, true );
+			self::recompile_all();
 			self::purge_caches();
+		}
+	}
+
+	/**
+	 * خروجی ذخیره‌شده همه صفحه‌ها و کاشی‌ها با قانون‌های نسخه جدید دوباره ساخته می‌شود
+	 * (منبع دست نمی‌خورد؛ سطح اعتماد همان آخرین ذخیره‌کننده می‌ماند)
+	 */
+	private static function recompile_all() {
+		$ids = get_posts(
+			array(
+				'post_type'        => array_values( array_unique( array_merge( self::post_types(), array( self::CPT ) ) ) ),
+				'post_status'      => 'any',
+				'posts_per_page'   => 500,
+				'fields'           => 'ids',
+				'meta_key'         => '_lsec_blocks', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'suppress_filters' => true,
+				'no_found_rows'    => true,
+			)
+		);
+		foreach ( (array) $ids as $id ) {
+			$blocks = self::get_blocks( $id );
+			if ( ! $blocks ) {
+				continue;
+			}
+			$trusted = ! self::post_untrusted( $id );
+			if ( ! $trusted ) {
+				$blocks = self::sanitize_blocks( $blocks );
+			}
+			$scope_on = '1' === get_post_meta( $id, '_lsec_scope', true );
+			update_post_meta( $id, '_lsec_compiled', wp_slash( self::compile_blocks( $blocks, $scope_on, $trusted ) ) );
 		}
 	}
 
@@ -1089,13 +1120,27 @@ final class Kashi {
 	private static function compile_blocks( $blocks, $scope_on, $trusted ) {
 		$out     = array();
 		$h1_seen = false;
+		$seen    = array(); // دستگاه‌هایی که بالاترین کاشی‌شان پیدا شده
 		foreach ( array_values( $blocks ) as $i => $b ) {
 			$code      = $trusted ? $b['code'] : self::strip_scripts( $b['code'] );
 			$c         = self::compile( $code, '.kashi-b-' . $b['uid'], $scope_on, $trusted );
 			$dev       = self::norm_dev( isset( $b['dev'] ) ? $b['dev'] : array() );
-			// تصویر LCP فقط برای کاشی اولی که در همه دستگاه‌ها دیده می‌شود؛ کاشی‌های مخصوص یک دستگاه
-			// lazy می‌مانند تا تصویرشان در دستگاه‌های دیگر (که پنهان است) دانلود نشود
-			$c['html'] = self::optimize_media( $c['html'], 0 === $i && ! $dev );
+			// تصویر LCP: اولین کاشی تصویردار که در همه دستگاه‌ها دیده می‌شود fetchpriority=high می‌گیرد
+			$c['html'] = self::optimize_media( $c['html'], ! $dev && count( $seen ) < count( self::DEVICES ) );
+			// کاشی بالای صفحه که فقط برای بعضی دستگاه‌هاست (مثلاً هیروی موبایل و هیروی دسکتاپ جدا):
+			// تصویرش lazy می‌ماند تا در دستگاه دیگر دانلود نشود، ولی با preload و media همان دستگاه
+			// از همان اول با اولویت بالا گرفته می‌شود
+			$fresh = array_diff( $dev ? $dev : array_keys( self::DEVICES ), $seen );
+			if ( $dev && $fresh && count( $seen ) < count( self::DEVICES ) ) {
+				$pre = self::lcp_preload( $c['html'], $fresh );
+				if ( '' !== $pre['link'] ) {
+					$c['html']  = $pre['html'];
+					$c['links'] = trim( $c['links'] . "\n" . $pre['link'] );
+				}
+			}
+			if ( false !== stripos( $c['html'], '<img' ) ) { // اولین کاشی تصویردار هر دستگاه
+				$seen = array_values( array_unique( array_merge( $seen, $dev ? $dev : array_keys( self::DEVICES ) ) ) );
+			}
 			$has_h1 = (bool) preg_match( '#<h1\b#i', $c['html'] );
 			if ( $has_h1 && $h1_seen && $dev ) {
 				$c = self::demote_h1( $c );
@@ -1152,6 +1197,52 @@ final class Kashi {
 			},
 			$html
 		);
+	}
+
+	/**
+	 * preload تصویر اول کاشی مخصوص دستگاه با media همان دستگاه‌ها؛ تگ img خودش lazy می‌ماند
+	 * تا در دستگاهی که کاشی پنهان است دانلود نشود. خروجی: html (با fetchpriority) و link.
+	 */
+	private static function lcp_preload( $html, $devs ) {
+		$none = array( 'html' => $html, 'link' => '' );
+		if ( ! preg_match( '#<img\b[^>]*>#i', $html, $m, PREG_OFFSET_CAPTURE ) ) {
+			return $none;
+		}
+		$tag = $m[0][0];
+		if ( preg_match( '/\sfetchpriority\s*=/i', $tag ) || preg_match( '/\sloading\s*=\s*["\']?eager/i', $tag ) ) {
+			return $none; // خودتان تصمیم گرفته‌اید
+		}
+		$attr = function ( $name ) use ( $tag ) {
+			return preg_match( '/\s' . $name . '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))/i', $tag, $a )
+				? html_entity_decode( $a[1] . ( isset( $a[2] ) ? $a[2] : '' ) . ( isset( $a[3] ) ? $a[3] : '' ), ENT_QUOTES )
+				: '';
+		};
+		$src    = trim( $attr( 'src' ) );
+		$srcset = trim( $attr( 'srcset' ) );
+		if ( ( '' === $src || 0 === stripos( $src, 'data:' ) ) && '' === $srcset ) {
+			return $none;
+		}
+		$mq = array();
+		foreach ( self::DEVICES as $k => $q ) {
+			if ( in_array( $k, $devs, true ) ) {
+				$mq[] = $q;
+			}
+		}
+		$link = '<link rel="preload" as="image" fetchpriority="high"';
+		if ( '' !== $src && 0 !== stripos( $src, 'data:' ) ) {
+			$link .= ' href="' . esc_url( $src ) . '"';
+		}
+		if ( '' !== $srcset ) {
+			$link .= ' imagesrcset="' . esc_attr( $srcset ) . '"';
+			$sizes = trim( $attr( 'sizes' ) );
+			if ( '' !== $sizes ) {
+				$link .= ' imagesizes="' . esc_attr( $sizes ) . '"';
+			}
+		}
+		$link .= ' media="' . esc_attr( implode( ', ', $mq ) ) . '">';
+		$new   = preg_replace( '#^<img\b#i', '<img fetchpriority="high"', $tag );
+		$html  = substr_replace( $html, $new, $m[0][1], strlen( $tag ) );
+		return array( 'html' => $html, 'link' => $link );
 	}
 
 	/**
@@ -4181,19 +4272,8 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		$code = preg_replace( '#<\?.*?(?:\?>|\z)#s', '', $code );
 		$code = self::wrap_bare( $code );
 
-		if ( preg_match_all( '#<style\b[^>]*>(.*?)</style\s*>#is', $code, $m ) ) {
-			$css  = implode( "\n", $m[1] );
-			$code = preg_replace( '#<style\b[^>]*>.*?</style\s*>#is', '', $code );
-		}
-
-		if ( preg_match_all( '#<link\b[^>]*>#i', $code, $m ) ) {
-			foreach ( $m[0] as $tag ) {
-				if ( preg_match( '#rel\s*=\s*["\']?(stylesheet|preconnect|preload)#i', $tag ) ) {
-					$links[] = $tag;
-				}
-			}
-			$code = preg_replace( '#<link\b[^>]*>#i', '', $code );
-		}
+		// ترتیب مهم است: اول اسکریپت‌ها جدا می‌شوند تا <style> یا <link> که داخل متن
+		// جاوااسکریپت نوشته شده (مثلاً innerHTML='<style>…') از وسط اسکریپت کنده نشود
 
 		// اسکیما (JSON-LD) جدا نگه داشته می‌شود تا در <head> چاپ شود
 		$jsonld = array();
@@ -4213,19 +4293,50 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			$code = preg_replace( '#<script\b[^>]*>.*?</script\s*>#is', '', $code );
 		}
 
+		if ( preg_match_all( '#<style\b[^>]*>(.*?)</style\s*>#is', $code, $m ) ) {
+			$css  = implode( "\n", $m[1] );
+			$code = preg_replace( '#<style\b[^>]*>.*?</style\s*>#is', '', $code );
+		}
+
+		if ( preg_match_all( '#<link\b[^>]*>#i', $code, $m ) ) {
+			foreach ( $m[0] as $tag ) {
+				if ( preg_match( '#rel\s*=\s*["\']?(stylesheet|preconnect|preload)#i', $tag ) ) {
+					$links[] = $tag;
+				}
+			}
+			$code = preg_replace( '#<link\b[^>]*>#i', '', $code );
+		}
+
 		if ( preg_match( '#<body\b[^>]*>(.*)</body\s*>#is', $code, $m ) ) {
 			$code = $m[1];
 		} else {
+			// <title> داخل SVG (متن راهنمای آیکون) و <meta itemprop> (اسکیمای میکرودیتا) بخشی از محتوا هستند، نه سربرگ صفحه
+			$svgs = array();
+			$code = preg_replace_callback(
+				'#<svg\b.*?</svg\s*>#is',
+				function ( $m ) use ( &$svgs ) {
+					$svgs[] = $m[0];
+					return "\x00KSVG" . ( count( $svgs ) - 1 ) . "\x00";
+				},
+				$code
+			);
 			$code = preg_replace(
 				array(
 					'#<!DOCTYPE[^>]*>#i',
 					'#<head\b[^>]*>.*?</head\s*>#is',
 					'#</?html\b[^>]*>#i',
 					'#</?body\b[^>]*>#i',
-					'#<meta\b[^>]*>#i',
+					'#<meta\b(?![^>]*\sitemprop\s*=)[^>]*>#i',
 					'#<title\b[^>]*>.*?</title\s*>#is',
 				),
 				'',
+				$code
+			);
+			$code = preg_replace_callback(
+				"#\x00KSVG(\d+)\x00#",
+				function ( $m ) use ( $svgs ) {
+					return isset( $svgs[ (int) $m[1] ] ) ? $svgs[ (int) $m[1] ] : '';
+				},
 				$code
 			);
 		}
@@ -4255,16 +4366,17 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 	}
 
 	private static function scope_css( $css, $scope ) {
-		$css = preg_replace( '#/\*.*?\*/#s', '', $css );
+		$css = self::css_strip_comments( $css );
 		$out = '';
 		$len = strlen( $css );
 		$i   = 0;
 
 		while ( $i < $len ) {
-			$brace = strpos( $css, '{', $i );
-			$semi  = strpos( $css, ';', $i );
+			// رشته‌ها ("…" و '…')، پرانتز و براکت نادیده گرفته می‌شوند تا content:"}" یا
+			// [href$=";x"] ساختار CSS را به هم نریزد
+			$pos = self::css_next( $css, $i, '{;}' );
 
-			if ( false === $brace ) {
+			if ( false === $pos ) {
 				$rest = trim( substr( $css, $i ) );
 				if ( '' !== $rest && '@' === $rest[0] ) {
 					$out .= $rest . "\n";
@@ -4272,29 +4384,35 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 				break;
 			}
 
-			if ( false !== $semi && $semi < $brace ) {
-				$stmt = trim( substr( $css, $i, $semi - $i + 1 ) );
-				if ( '' !== $stmt && '@' === $stmt[0] ) {
-					$out .= $stmt . "\n";
-				}
-				$i = $semi + 1;
+			if ( '}' === $css[ $pos ] ) { // آکولاد بسته اضافه
+				$i = $pos + 1;
 				continue;
 			}
 
+			if ( ';' === $css[ $pos ] ) {
+				$stmt = trim( substr( $css, $i, $pos - $i + 1 ) );
+				if ( '' !== $stmt && '@' === $stmt[0] ) {
+					$out .= $stmt . "\n";
+				}
+				$i = $pos + 1;
+				continue;
+			}
+
+			$brace   = $pos;
 			$prelude = trim( substr( $css, $i, $brace - $i ) );
 
 			$depth = 1;
 			$j     = $brace + 1;
-			while ( $j < $len && $depth > 0 ) {
-				if ( '{' === $css[ $j ] ) {
-					$depth++;
-				} elseif ( '}' === $css[ $j ] ) {
-					$depth--;
+			while ( $depth > 0 ) {
+				$k = self::css_next( $css, $j, '{}' );
+				if ( false === $k ) {
+					break;
 				}
-				$j++;
+				$depth += ( '{' === $css[ $k ] ) ? 1 : -1;
+				$j      = $k + 1;
 			}
 			$body = ( $depth > 0 ) ? substr( $css, $brace + 1 ) : substr( $css, $brace + 1, $j - $brace - 2 );
-			$i    = $j;
+			$i    = ( $depth > 0 ) ? $len : $j;
 
 			if ( '' === $prelude ) {
 				continue;
@@ -4313,6 +4431,78 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 		}
 
 		return $out;
+	}
+
+	/** حذف کامنت‌های CSS بدون دست زدن به متن داخل رشته‌ها (مثلاً url("a/*b")) */
+	private static function css_strip_comments( $css ) {
+		$out = '';
+		$n   = strlen( $css );
+		$q   = '';
+		for ( $i = 0; $i < $n; $i++ ) {
+			$c = $css[ $i ];
+			if ( '' !== $q ) {
+				$out .= $c;
+				if ( '\\' === $c && $i + 1 < $n ) {
+					$out .= $css[ ++$i ];
+				} elseif ( $c === $q || "\n" === $c ) {
+					$q = '';
+				}
+				continue;
+			}
+			if ( '"' === $c || "'" === $c ) {
+				$q    = $c;
+				$out .= $c;
+				continue;
+			}
+			if ( '/' === $c && $i + 1 < $n && '*' === $css[ $i + 1 ] ) {
+				$e = strpos( $css, '*/', $i + 2 );
+				if ( false === $e ) {
+					break;
+				}
+				$i = $e + 1;
+				continue;
+			}
+			$out .= $c;
+		}
+		return $out;
+	}
+
+	/** موقعیت اولین نویسه از $set بیرون از رشته، پرانتز و براکت؛ false اگر نباشد */
+	private static function css_next( $css, $i, $set ) {
+		$n = strlen( $css );
+		$q = '';
+		$d = 0;
+		for ( ; $i < $n; $i++ ) {
+			$c = $css[ $i ];
+			if ( '' !== $q ) {
+				if ( '\\' === $c ) {
+					$i++;
+				} elseif ( $c === $q || "\n" === $c ) {
+					$q = '';
+				}
+				continue;
+			}
+			if ( '\\' === $c ) {
+				$i++;
+				continue;
+			}
+			if ( '"' === $c || "'" === $c ) {
+				$q = $c;
+				continue;
+			}
+			if ( '(' === $c || '[' === $c ) {
+				$d++;
+				continue;
+			}
+			if ( ( ')' === $c || ']' === $c ) && $d > 0 ) {
+				$d--;
+				continue;
+			}
+			if ( false !== strpos( $set, $c ) && ( 0 === $d || '{' === $c || '}' === $c ) ) {
+				return $i; // آکولاد داخل پرانتز معتبر نیست؛ پرانتز بازِ جاافتاده بقیه CSS را نمی‌بلعد
+			}
+		}
+		return false;
 	}
 
 	private static function scope_selectors( $prelude, $scope ) {

@@ -3,7 +3,7 @@ Contributors: karorostampour
 Tags: page builder, code editor, sections, lightweight, seo
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,14 @@ Created by KaroRostampour — https://github.com/KaroRostampour/kashi
 <?php defined( 'ABSPATH' ) || exit;
 
 == تغییرات ==
+
+= 2.2.1 =
+* رفع باگ: تگ <style> یا <link> که داخل متن جاوااسکریپت نوشته شده (مثلاً innerHTML='<style>…') دیگر از وسط اسکریپت کنده نمی‌شود
+* رفع باگ: <title> داخل آیکون‌های SVG (متن راهنما و صفحه‌خوان) و <meta itemprop> اسکیمای میکرودیتا حذف نمی‌شوند
+* رفع باگ: آکولاد یا نقطه‌ویرگول داخل رشته‌های CSS (مثل content:"}" یا [href$=";x"]) دیگر بقیه CSS کاشی را خراب نمی‌کند
+* سرعت: وقتی بالای صفحه کاشی جدا برای موبایل و دسکتاپ دارید، تصویر اصلی هر کدام فقط در دستگاه خودش با اولویت بالا preload می‌شود (LCP بهتر، بدون دانلود اضافه)
+* بعد از به‌روزرسانی، خروجی همه صفحه‌ها و کاشی‌ها خودکار با قانون‌های جدید دوباره ساخته می‌شود
+* English: fixes for <style>/<link> inside JS strings, SVG <title>, microdata <meta itemprop>, braces in CSS strings; device-aware LCP preload.
 
 = 2.2.0 =
 * رنگ‌ها و فونت سراسری: در «کاشی ← تنظیمات» رنگ اصلی، رنگ دوم، رنگ متن، متن کم‌رنگ، پس‌زمینه ملایم، گردی گوشه‌ها و فونت را یک بار تعریف کنید؛ همه سکشن‌های آماده (و هر کدی که از var(--kashi-accent) و … استفاده کند) خودکار عوض می‌شوند. پیش‌نمایش گالری سکشن‌ها هم همین رنگ‌ها را نشان می‌دهد
