@@ -1,8 +1,8 @@
 {
     "name": "kashi",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "files": {
-        "README.md": "c8068733dadbca41f07b7c0d700f8b0486e27c2e4a22e5f8a8761adb6082086b",
+        "README.md": "4efa43a439a103090056b7f3d4249c6d7b5381dd6b251f44e0f6e993e4ba5558",
         "assets/ICONS-LICENSE.txt": "252e6125654fb2e4bb37a4e7e6fde691705e03cde34fbcaf31d6138dcca958af",
         "assets/fonts/OFL.txt": "17e355067c8284f47743a1ee3b1ef7ff684ff0601eda357f9353b10b3016ab31",
         "assets/fonts/vazirmatn.woff2": "4e3fa217d38fdafc1fea4414ceb58ca5e662cf0ab5fa735a8c8c20e8b42cad92",
@@ -12,7 +12,7 @@
         "includes/class-kashi-about.php": "ac91b982fdd2202d0634dccd1256096ba35989aa333b16b5875d8a4d466bc872",
         "includes/class-kashi-net.php": "93a0a75765d00f684e43830446cb3faaf1628446df371469cd125108749def61",
         "includes/class-kashi-updater.php": "cd2bf2e36fd5b6f19c647df644d95611a0d4b3c2e58249b1f12d04de3bcdfec2",
-        "kashi.php": "5be8de9ed2e5c2a6f743953160ebc22dc1883e5d4eef029be2d935bb32f7e8b1",
+        "kashi.php": "43205af40e8f22487cee7706e6915df6f87b3f8f6dbce0108ac21f100d64dc73",
         "languages/ar.json": "1e8bd6936d51a1d7b1253a4f9cd21e260d8e80201b9e76180c1def91351eb529",
         "languages/ckb.json": "bf58bef163106189b79764cc7cbdc6a72d4fe31ccec4fe14fdbd88b2008ad823",
         "languages/de.json": "e41b77571efe9063927d81389ce92a31ba8cfcfe28f5dcafc40a459e0ae9e581",
@@ -24,9 +24,9 @@
         "languages/zh.json": "fbd2a3e4ad4db76155c41d819c81658e03bd0abebe62c622cc9ca09ac06c8700",
         "playground/blueprint-fa.json": "d91fc61caf864b1b9fd2f566104ae279cf5b7c1b37c6878b319900906a096be4",
         "playground/blueprint.json": "c1c5905c9bba339a810bfc5224b11c2ac436bbd2addf23e2191f71fa21918ebf",
-        "readme.txt": "e84dd15eca4d4094fe0b868f8654cf54a816cc788cb3e09126ad9d52a55c0f68",
+        "readme.txt": "97125d01ede20769d756570f4d8213471ad32ffd46607c4c45b49d65f0375865",
         "templates/canvas.php": "e918072f2a2b2b8b0835cdaeadf4322376c4ce795254d3686c1290a636ce8da0",
         "templates/full-width.php": "a43a484639d1e14e3b9f271f31993f97ef683e349a90f635f4858a3ed7adab98"
     },
-    "sig": "MtLastWU8v6darmDtGTl89FujDmq2+seykbBVy8kH60+PcgYviW4Y2t4z3L1dF8qkeJ6KI6CxrqVI+FVcThEDg=="
+    "sig": "rIZrMKVAAWmcf/86bbRq07BgtVOcNVi+kNdF7ucK8LqE1GL7p3vHZBcT3kc2pq6GITNwwXlbNKF4tbQc3CP4Bg=="
 }

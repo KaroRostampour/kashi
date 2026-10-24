@@ -5,7 +5,7 @@
 **The code-first page builder for WordPress.**
 Build every page tile by tile with your own HTML, CSS and JavaScript — written by hand or by AI — and see it live inside your real theme.
 
-![Version](https://img.shields.io/badge/version-2.2.1-6c5ce7)
+![Version](https://img.shields.io/badge/version-2.2.2-6c5ce7)
 ![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-21759b)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4)
 ![License](https://img.shields.io/badge/license-GPL--2.0--or--later-2ea44f)

@@ -3,7 +3,7 @@ Contributors: karorostampour
 Tags: page builder, code editor, sections, lightweight, seo
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,11 @@ Created by KaroRostampour — https://github.com/KaroRostampour/kashi
 <?php defined( 'ABSPATH' ) || exit;
 
 == تغییرات ==
+
+= 2.2.2 =
+* رفع فوری: در نسخه 2.2.1 روی بعضی سرورها (PHP قدیمی‌تر از 8.2) محتوای کاشی‌ها خالی می‌شد. این نسخه بعد از نصب، خروجی همه صفحه‌ها را از روی کد ذخیره‌شده دوباره می‌سازد؛ کد شما هیچ‌وقت پاک نشده بود
+* ایمنی: اگر ساختن دوباره خروجی کاشی‌ای را که قبلاً محتوا داشت خالی کند، خروجی قبلی نگه داشته می‌شود
+* English: hotfix for empty tiles on PHP < 8.2 in 2.2.1; output is rebuilt automatically.
 
 = 2.2.1 =
 * رفع باگ: تگ <style> یا <link> که داخل متن جاوااسکریپت نوشته شده (مثلاً innerHTML='<style>…') دیگر از وسط اسکریپت کنده نمی‌شود

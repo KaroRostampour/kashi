@@ -3,7 +3,7 @@
  * Plugin Name:       کاشی — Kashi
  * Plugin URI:        https://github.com/KaroRostampour/kashi
  * Description:       A lightweight, code-first page builder: build pages tile by tile with your own HTML/CSS/JS and see the result instantly. No bloat, works with any theme and SEO plugin. 10 languages.
- * Version:           2.2.1
+ * Version:           2.2.2
  * Author:            KaroRostampour
  * Author URI:        https://github.com/KaroRostampour
  * License:           GPL-2.0-or-later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Kashi {
 
 	const CPT     = 'lsec_section';
-	const VERSION = '2.2.1';
+	const VERSION = '2.2.2';
 
 	/* ================================================================== *
 	 * زبان‌ها (i18n)
@@ -1085,7 +1085,25 @@ final class Kashi {
 				$blocks = self::sanitize_blocks( $blocks );
 			}
 			$scope_on = '1' === get_post_meta( $id, '_lsec_scope', true );
-			update_post_meta( $id, '_lsec_compiled', wp_slash( self::compile_blocks( $blocks, $scope_on, $trusted ) ) );
+			$new      = self::compile_blocks( $blocks, $scope_on, $trusted );
+			// ایمنی: اگر کاشی‌ای که قبلاً HTML داشت حالا خروجی خالی بدهد، خروجی قبلی دست نمی‌خورد
+			$prev = self::saved_compiled( $id );
+			$had  = array();
+			foreach ( (array) $prev as $pb ) {
+				if ( is_array( $pb ) && isset( $pb['uid'] ) && ! empty( $pb['c']['html'] ) && '' !== trim( (string) $pb['c']['html'] ) ) {
+					$had[ (string) $pb['uid'] ] = true;
+				}
+			}
+			$bad = false;
+			foreach ( $new as $nb ) {
+				if ( isset( $had[ (string) $nb['uid'] ] ) && '' === trim( (string) $nb['c']['html'] ) ) {
+					$bad = true;
+					break;
+				}
+			}
+			if ( ! $bad ) {
+				update_post_meta( $id, '_lsec_compiled', wp_slash( $new ) );
+			}
 		}
 	}
 
@@ -4311,34 +4329,43 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 			$code = $m[1];
 		} else {
 			// <title> داخل SVG (متن راهنمای آیکون) و <meta itemprop> (اسکیمای میکرودیتا) بخشی از محتوا هستند، نه سربرگ صفحه
-			$svgs = array();
-			$code = preg_replace_callback(
+			$before = $code;
+			$svgs   = array();
+			$tok    = 'kashisvg' . substr( md5( (string) mt_rand() . microtime() ), 0, 10 ) . 'n';
+			$code   = preg_replace_callback(
 				'#<svg\b.*?</svg\s*>#is',
-				function ( $m ) use ( &$svgs ) {
+				function ( $m ) use ( &$svgs, $tok ) {
 					$svgs[] = $m[0];
-					return "\x00KSVG" . ( count( $svgs ) - 1 ) . "\x00";
+					return $tok . ( count( $svgs ) - 1 ) . 'x';
 				},
 				$code
 			);
-			$code = preg_replace(
-				array(
-					'#<!DOCTYPE[^>]*>#i',
-					'#<head\b[^>]*>.*?</head\s*>#is',
-					'#</?html\b[^>]*>#i',
-					'#</?body\b[^>]*>#i',
-					'#<meta\b(?![^>]*\sitemprop\s*=)[^>]*>#i',
-					'#<title\b[^>]*>.*?</title\s*>#is',
-				),
-				'',
-				$code
-			);
-			$code = preg_replace_callback(
-				"#\x00KSVG(\d+)\x00#",
-				function ( $m ) use ( $svgs ) {
-					return isset( $svgs[ (int) $m[1] ] ) ? $svgs[ (int) $m[1] ] : '';
-				},
-				$code
-			);
+			if ( null !== $code ) {
+				$code = preg_replace(
+					array(
+						'#<!DOCTYPE[^>]*>#i',
+						'#<head\b[^>]*>.*?</head\s*>#is',
+						'#</?html\b[^>]*>#i',
+						'#</?body\b[^>]*>#i',
+						'#<meta\b(?![^>]*\sitemprop\s*=)[^>]*>#i',
+						'#<title\b[^>]*>.*?</title\s*>#is',
+					),
+					'',
+					$code
+				);
+			}
+			if ( null !== $code ) {
+				$code = preg_replace_callback(
+					'#' . $tok . '(\d+)x#',
+					function ( $m ) use ( $svgs ) {
+						return isset( $svgs[ (int) $m[1] ] ) ? $svgs[ (int) $m[1] ] : '';
+					},
+					$code
+				);
+			}
+			if ( null === $code ) {
+				$code = $before; // خطای regex هرگز نباید محتوای کاشی را خالی کند
+			}
 		}
 
 		if ( ! $trusted ) {
